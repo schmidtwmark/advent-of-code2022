@@ -12,9 +12,7 @@ if [ -z "$AOC_TOKEN" ]; then
 fi
 
 URL="https://adventofcode.com/2022/day/$1/input"
-cargo new day$1
-cd day$1
-curl $URL --cookie $AOC_TOKEN > input.txt
-touch sample.txt
-cp ../template.rs src/main.rs
-echo "itertools = \"0.8.0\"" >> Cargo.toml
+curl $URL --cookie $AOC_TOKEN > inputs/$1.txt
+touch samples/$1.txt
+cp template.rs src/bin/$1.rs
+sed -i '' -e "s/aaaaa/$1/g"  src/bin/$1.rs
