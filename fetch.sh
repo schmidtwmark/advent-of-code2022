@@ -11,7 +11,7 @@ if [ -z "$AOC_TOKEN" ]; then
   exit 1
 fi
 
-URL="https://adventofcode.com/2021/day/$1/input"
+URL="https://adventofcode.com/2022/day/$1/input"
 cargo new day$1
 cd day$1
 curl $URL --cookie $AOC_TOKEN > input.txt
