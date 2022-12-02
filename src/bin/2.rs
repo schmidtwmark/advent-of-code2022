@@ -1,5 +1,4 @@
 use itertools::Itertools;
-use std::fs;
 
 fn main() {
     aoc::run_all(part_one, part_two, 15, 12);
