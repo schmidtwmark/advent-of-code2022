@@ -120,7 +120,7 @@ mod tests {
     fn test_part_two() {
         let result = part_two(get_lines(get_filename(false)), REAL_PARAM);
         println!("Part two real: {:?}", result);
-        assert_eq!(result, 0);
+        assert_eq!(result, 10398);
     }
 
 }
