@@ -8,10 +8,10 @@ fn main() {
     aoc::run_all(part_one, part_two, sample, input);
 }
 
-fn part_one(lines: &[String]) -> usize {
+fn part_one(lines: &[&str]) -> usize {
     0
 }
 
-fn part_two(lines: &[String]) -> usize {
+fn part_two(lines: &[&str]) -> usize {
     0
 }
