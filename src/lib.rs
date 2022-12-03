@@ -81,16 +81,15 @@ fn get_lines(file: &str) -> Vec<&str> {
     file.lines().collect_vec()
 }
 
-pub fn run_all<D>(part_one: Solution<D>, part_two: Solution<D>)
+pub fn run_all<D>(solutions: &[Solution<D>])
 where
     D: ProblemResult,
 {
     thread::scope(|s| {
-        s.spawn(|| {
-            part_one.run_all();
-        });
-        s.spawn(|| {
-            part_two.run_all();
-        });
+        for solution in solutions {
+            s.spawn(move || {
+                solution.run_all();
+            });
+        }
     });
 }

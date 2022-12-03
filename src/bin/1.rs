@@ -16,7 +16,7 @@ fn main() {
     ];
     let part_two = aoc::Solution::new("part_two", &part_two, &part_two_problems);
 
-    aoc::run_all(part_one, part_two);
+    aoc::run_all(&[part_one, part_two]);
 }
 
 fn part_one(lines: &[&str]) -> usize {
