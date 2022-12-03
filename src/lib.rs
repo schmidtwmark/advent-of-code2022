@@ -1,24 +1,66 @@
 use itertools::Itertools;
+use std::fmt::Debug;
+use std::fmt::Display;
 use std::thread;
 use std::time::Instant;
 
-// pub type Solver = dyn Fn(&[String]) -> usize;
-
-pub struct ProblemSolution<'a> {
-    solver: &'a (dyn Fn(&[&str]) -> usize + Sync),
-    sample_solution: usize,
+pub struct Problem<'a, D>
+where
+    D: Display + Sync + Eq + PartialEq + Debug,
+{
+    input: &'a str,
+    solution: Option<D>,
 }
 
-impl<'a> ProblemSolution<'a> {
-    pub fn new(solver: &'a (dyn Fn(&[&str]) -> usize + Sync), sample_solution: usize) -> Self {
+impl<'a, D> Problem<'a, D>
+where
+    D: Display + Sync + Eq + PartialEq + Debug,
+{
+    pub fn new(input: &'a str, solution: Option<D>) -> Self {
+        Self { input, solution }
+    }
+}
+
+pub struct Solution<'a, D>
+where
+    D: Display + Sync + Eq + PartialEq + Debug,
+{
+    name: &'a str,
+    solver: &'a (dyn Fn(&[&str]) -> D + Sync),
+    problems: &'a [Problem<'a, D>],
+}
+
+impl<'a, D> Solution<'a, D>
+where
+    D: Display + Sync + Eq + PartialEq + Debug,
+{
+    pub fn new(
+        name: &'a str,
+        solver: &'a (dyn Fn(&[&str]) -> D + Sync),
+        problems: &'a [Problem<'a, D>],
+    ) -> Self {
         Self {
+            name,
             solver,
-            sample_solution,
+            problems,
         }
     }
 
-    pub fn run(&self, input: &[&str]) -> usize {
-        (self.solver)(input)
+    pub fn run_all(&self) {
+        thread::scope(|s| {
+            for problem in self.problems {
+                s.spawn(move || {
+                    let start = Instant::now();
+                    let result = (self.solver)(get_lines(problem.input).as_slice());
+                    let elapsed = start.elapsed();
+                    if let Some(solution) = &problem.solution {
+                        assert_eq!(result, *solution);
+                    } else {
+                        println!("{}: {} ({:?})", self.name, result, elapsed);
+                    }
+                });
+            }
+        })
     }
 }
 
@@ -26,28 +68,16 @@ fn get_lines(file: &str) -> Vec<&str> {
     file.lines().collect_vec()
 }
 
-pub fn run_all(part_one: ProblemSolution, part_two: ProblemSolution, sample: &str, input: &str) {
-    let sample = get_lines(sample);
-    let real = get_lines(input);
-
+pub fn run_all<D>(part_one: Solution<D>, part_two: Solution<D>)
+where
+    D: Display + Sync + Eq + PartialEq + Debug,
+{
     thread::scope(|s| {
         s.spawn(|| {
-            let result = part_one.run(&sample);
-            assert_eq!(result, part_one.sample_solution);
+            part_one.run_all();
         });
         s.spawn(|| {
-            let start = Instant::now();
-            let result = part_one.run(&real);
-            println!("Part one: {:?}, took {:?}", result, start.elapsed());
-        });
-        s.spawn(|| {
-            let result = part_two.run(&sample);
-            assert_eq!(result, part_two.sample_solution);
-        });
-        s.spawn(|| {
-            let start = Instant::now();
-            let result = part_two.run(&real);
-            println!("Part two: {:?}, took {:?}", result, start.elapsed());
+            part_two.run_all();
         });
     });
 }

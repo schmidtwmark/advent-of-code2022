@@ -2,9 +2,20 @@ use im::HashSet;
 fn main() {
     let sample = include_str!("../../samples/3.txt");
     let input = include_str!("../../inputs/3.txt");
-    let part_one = aoc::ProblemSolution::new(&part_one, 157);
-    let part_two = aoc::ProblemSolution::new(&part_two, 70);
-    aoc::run_all(part_one, part_two, sample, input);
+
+    let part_one_problems = [
+        aoc::Problem::new(sample, Some(157)),
+        aoc::Problem::new(input, None),
+    ];
+    let part_one = aoc::Solution::new("part_one", &part_one, &part_one_problems);
+
+    let part_two_problems = [
+        aoc::Problem::new(sample, Some(70)),
+        aoc::Problem::new(input, None),
+    ];
+    let part_two = aoc::Solution::new("part_two", &part_two, &part_two_problems);
+
+    aoc::run_all(part_one, part_two);
 }
 
 fn find_common(line: &str) -> char {
