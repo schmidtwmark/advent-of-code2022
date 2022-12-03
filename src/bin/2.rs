@@ -5,14 +5,14 @@ fn main() {
     let input = include_str!("../../inputs/2.txt");
 
     let part_one_problems = [
-        aoc::Problem::new(sample, Some(15)),
-        aoc::Problem::new(input, None),
+        aoc::Problem::new_sample(sample, 15),
+        aoc::Problem::new_final(input),
     ];
     let part_one = aoc::Solution::new("part_one", &part_one, &part_one_problems);
 
     let part_two_problems = [
-        aoc::Problem::new(sample, Some(12)),
-        aoc::Problem::new(input, None),
+        aoc::Problem::new_sample(sample, 12),
+        aoc::Problem::new_final(input),
     ];
     let part_two = aoc::Solution::new("part_two", &part_two, &part_two_problems);
 
