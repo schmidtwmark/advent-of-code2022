@@ -1,5 +1,4 @@
-use itertools::Itertools;
-use std::collections::HashSet;
+use im::HashSet;
 fn main() {
     let sample = include_str!("../../samples/3.txt");
     let input = include_str!("../../inputs/3.txt");
@@ -12,8 +11,8 @@ fn find_common(line: &str) -> char {
     let (left_compartment, right_compartment) = line.split_at(line.len() / 2);
     let left_set = left_compartment.chars().collect::<HashSet<_>>();
     let right_set = right_compartment.chars().collect::<HashSet<_>>();
-    let mut intersect = left_set.intersection(&right_set);
-    if intersect.clone().count() != 1 {
+    let intersect = left_set.intersection(right_set);
+    if intersect.iter().count() != 1 {
         println!(
             "Intersection between {} and {} is {:?}",
             left_compartment, right_compartment, intersect
@@ -21,7 +20,7 @@ fn find_common(line: &str) -> char {
         panic!("Intersection is not 1");
     }
 
-    *intersect.next().unwrap()
+    *intersect.iter().next().unwrap()
 }
 
 fn compute_priority(c: char) -> usize {
@@ -46,22 +45,13 @@ fn part_two(lines: &[&str]) -> usize {
             let common_item = group
                 .iter()
                 .map(|line| line.chars().collect::<HashSet<_>>())
-                .fold(None, |acc, set| match acc {
-                    None => Some(set),
-                    Some(acc_set) => {
-                        Some(acc_set.intersection(&set).cloned().collect::<HashSet<_>>())
-                    }
-                });
-            match common_item {
-                None => panic!("No common item"),
-                Some(set) => {
-                    if set.len() != 1 {
-                        println!("Not exactly 1 common item: {:?}", set);
-                        panic!();
-                    }
-                    compute_priority(*set.iter().next().unwrap())
-                }
+                .reduce(|a, b| a.intersection(b))
+                .expect("Should be one item");
+            if common_item.len() != 1 {
+                println!("Not exactly 1 common item: {:?}", common_item);
+                panic!();
             }
+            compute_priority(*common_item.iter().next().unwrap())
         })
         .sum::<usize>()
 }
