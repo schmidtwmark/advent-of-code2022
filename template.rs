@@ -1,5 +1,13 @@
 use itertools::Itertools;
 
+fn part_one(lines: &[&str]) -> usize {
+    0
+}
+
+fn part_two(lines: &[&str]) -> usize {
+    0
+}
+
 fn main() {
     let sample = include_str!("../../samples/aaaaa.txt");
     let input = include_str!("../../inputs/aaaaa.txt");
@@ -16,12 +24,4 @@ fn main() {
     let part_two = aoc::Solution::new("part_two", &part_two, &part_two_problems);
 
     aoc::run_all(part_one, part_two);
-}
-
-fn part_one(lines: &[&str]) -> usize {
-    0
-}
-
-fn part_two(lines: &[&str]) -> usize {
-    0
 }
