@@ -19,9 +19,9 @@ impl<'a, D> Problem<'a, D>
 where
     D: ProblemResult,
 {
-    pub fn new_sample(input: &'a str, solution: D) -> Self {
+    pub fn new_sample(sample: &'a str, solution: D) -> Self {
         Self {
-            input,
+            input: sample,
             solution: Some(solution),
         }
     }
