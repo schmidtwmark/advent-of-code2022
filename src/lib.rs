@@ -4,9 +4,12 @@ use std::fmt::Display;
 use std::thread;
 use std::time::Instant;
 
+pub trait ProblemResult: Display + Sync + Eq + PartialEq + Debug {}
+impl<T> ProblemResult for T where T: Display + Sync + Eq + PartialEq + Debug {}
+
 pub struct Problem<'a, D>
 where
-    D: Display + Sync + Eq + PartialEq + Debug,
+    D: ProblemResult,
 {
     input: &'a str,
     solution: Option<D>,
@@ -14,7 +17,7 @@ where
 
 impl<'a, D> Problem<'a, D>
 where
-    D: Display + Sync + Eq + PartialEq + Debug,
+    D: ProblemResult,
 {
     pub fn new(input: &'a str, solution: Option<D>) -> Self {
         Self { input, solution }
@@ -23,7 +26,7 @@ where
 
 pub struct Solution<'a, D>
 where
-    D: Display + Sync + Eq + PartialEq + Debug,
+    D: ProblemResult,
 {
     name: &'a str,
     solver: &'a (dyn Fn(&[&str]) -> D + Sync),
@@ -32,7 +35,7 @@ where
 
 impl<'a, D> Solution<'a, D>
 where
-    D: Display + Sync + Eq + PartialEq + Debug,
+    D: ProblemResult,
 {
     pub fn new(
         name: &'a str,
@@ -70,7 +73,7 @@ fn get_lines(file: &str) -> Vec<&str> {
 
 pub fn run_all<D>(part_one: Solution<D>, part_two: Solution<D>)
 where
-    D: Display + Sync + Eq + PartialEq + Debug,
+    D: ProblemResult,
 {
     thread::scope(|s| {
         s.spawn(|| {
