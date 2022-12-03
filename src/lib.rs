@@ -5,25 +5,25 @@ use std::time::Instant;
 // pub type Solver = dyn Fn(&[String]) -> usize;
 
 pub struct ProblemSolution<'a> {
-    solver: &'a (dyn Fn(&[String]) -> usize + Sync),
+    solver: &'a (dyn Fn(&[&str]) -> usize + Sync),
     sample_solution: usize,
 }
 
 impl<'a> ProblemSolution<'a> {
-    pub fn new(solver: &'a (dyn Fn(&[String]) -> usize + Sync), sample_solution: usize) -> Self {
+    pub fn new(solver: &'a (dyn Fn(&[&str]) -> usize + Sync), sample_solution: usize) -> Self {
         Self {
             solver,
             sample_solution,
         }
     }
 
-    pub fn run(&self, input: &[String]) -> usize {
+    pub fn run(&self, input: &[&str]) -> usize {
         (self.solver)(input)
     }
 }
 
-fn get_lines(file: &str) -> Vec<String> {
-    file.lines().map(|s| s.to_owned()).collect_vec()
+fn get_lines(file: &str) -> Vec<&str> {
+    file.lines().collect_vec()
 }
 
 pub fn run_all(part_one: ProblemSolution, part_two: ProblemSolution, sample: &str, input: &str) {

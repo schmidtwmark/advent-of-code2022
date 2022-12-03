@@ -43,7 +43,7 @@ fn score_game(other: &str, me: &str) -> usize {
         }
 }
 
-fn part_one(lines: &[String]) -> usize {
+fn part_one(lines: &[&str]) -> usize {
     lines
         .iter()
         .map(|line| {
@@ -53,7 +53,7 @@ fn part_one(lines: &[String]) -> usize {
         .sum()
 }
 
-fn part_two(lines: &[String]) -> usize {
+fn part_two(lines: &[&str]) -> usize {
     let recalculated = lines
         .iter()
         .map(|line| {
@@ -82,5 +82,11 @@ fn part_two(lines: &[String]) -> usize {
             )
         })
         .collect_vec();
-    part_one(&recalculated)
+    part_one(
+        recalculated
+            .iter()
+            .map(|s| s.as_str())
+            .collect_vec()
+            .as_slice(),
+    )
 }
