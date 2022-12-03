@@ -1,7 +1,11 @@
 use itertools::Itertools;
 
 fn main() {
-    aoc::run_all(part_one, part_two, 15, 12);
+    let sample = include_str!("../../samples/2.txt");
+    let input = include_str!("../../inputs/2.txt");
+    let part_one = aoc::ProblemSolution::new(&part_one, 15);
+    let part_two = aoc::ProblemSolution::new(&part_two, 12);
+    aoc::run_all(part_one, part_two, sample, input);
 }
 
 enum Outcome {

@@ -1,54 +1,52 @@
 use itertools::Itertools;
-use std::fs;
 use std::thread;
 use std::time::Instant;
 
-fn get_filename(sample: bool) -> String {
-    let current_exe = std::env::current_exe()
-        .unwrap()
-        .file_name()
-        .unwrap()
-        .to_os_string()
-        .into_string()
-        .unwrap();
-    if sample {
-        format!("samples/{}.txt", current_exe)
-    } else {
-        format!("inputs/{}.txt", current_exe)
+// pub type Solver = dyn Fn(&[String]) -> usize;
+
+pub struct ProblemSolution<'a> {
+    solver: &'a (dyn Fn(&[String]) -> usize + Sync),
+    sample_solution: usize,
+}
+
+impl<'a> ProblemSolution<'a> {
+    pub fn new(solver: &'a (dyn Fn(&[String]) -> usize + Sync), sample_solution: usize) -> Self {
+        Self {
+            solver,
+            sample_solution,
+        }
+    }
+
+    pub fn run(&self, input: &[String]) -> usize {
+        (self.solver)(input)
     }
 }
 
-fn get_lines(filename: &str) -> Vec<String> {
-    let contents = fs::read_to_string(filename)
-        .unwrap_or_else(|_| panic!("Something went wrong reading the file {}", filename));
-    contents.lines().map(|s| s.to_owned()).collect_vec()
+fn get_lines(file: &str) -> Vec<String> {
+    file.lines().map(|s| s.to_owned()).collect_vec()
 }
 
-pub fn run_all<F1, F2>(part1: F1, part2: F2, sample_solution_one: usize, sample_solution_two: usize)
-where
-    F1: Fn(&[String]) -> usize + Sync + 'static,
-    F2: Fn(&[String]) -> usize + Sync + 'static,
-{
-    let sample = get_lines(&get_filename(true));
-    let real = get_lines(&get_filename(false));
+pub fn run_all(part_one: ProblemSolution, part_two: ProblemSolution, sample: &str, input: &str) {
+    let sample = get_lines(sample);
+    let real = get_lines(input);
 
     thread::scope(|s| {
         s.spawn(|| {
-            let result = part1(&sample);
-            assert_eq!(result, sample_solution_one);
+            let result = part_one.run(&sample);
+            assert_eq!(result, part_one.sample_solution);
         });
         s.spawn(|| {
             let start = Instant::now();
-            let result = part1(&real);
+            let result = part_one.run(&real);
             println!("Part one: {:?}, took {:?}", result, start.elapsed());
         });
         s.spawn(|| {
-            let result = part2(&sample);
-            assert_eq!(result, sample_solution_two);
+            let result = part_two.run(&sample);
+            assert_eq!(result, part_two.sample_solution);
         });
         s.spawn(|| {
             let start = Instant::now();
-            let result = part2(&real);
+            let result = part_two.run(&real);
             println!("Part two: {:?}, took {:?}", result, start.elapsed());
         });
     });

@@ -1,7 +1,11 @@
 use itertools::Itertools;
 
 fn main() {
-    aoc::run_all(part_one, part_two, 24000, 45000);
+    let sample = include_str!("../../samples/1.txt");
+    let input = include_str!("../../inputs/1.txt");
+    let part_one = aoc::ProblemSolution::new(&part_one, 24000);
+    let part_two = aoc::ProblemSolution::new(&part_two, 45000);
+    aoc::run_all(part_one, part_two, sample, input);
 }
 
 fn part_one(lines: &[String]) -> usize {
