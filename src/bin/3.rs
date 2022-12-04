@@ -1,21 +1,21 @@
+use aoc::Solver;
 use im::HashSet;
 fn main() {
     let sample = include_str!("../../samples/3.txt");
     let input = include_str!("../../inputs/3.txt");
 
     let part_one_problems = [
-        aoc::Problem::new_sample(sample, 157),
-        aoc::Problem::new_final(input),
+        aoc::Input::new_sample(sample, 157),
+        aoc::Input::new_final(input),
     ];
-    let part_one = aoc::Solution::new("part_one", &part_one, &part_one_problems);
 
     let part_two_problems = [
-        aoc::Problem::new_sample(sample, 70),
-        aoc::Problem::new_final(input),
+        aoc::Input::new_sample(sample, 70),
+        aoc::Input::new_final(input),
     ];
-    let part_two = aoc::Solution::new("part_two", &part_two, &part_two_problems);
 
-    aoc::run_all(&[part_one, part_two]);
+    PartOne {}.run(&part_one_problems);
+    PartTwo {}.run(&part_two_problems);
 }
 
 fn find_common(line: &str) -> char {
@@ -42,27 +42,37 @@ fn compute_priority(c: char) -> usize {
     }
 }
 
-fn part_one(lines: &[&str]) -> usize {
-    lines
-        .iter()
-        .map(|line| compute_priority(find_common(line)))
-        .sum()
+struct PartOne {}
+impl Solver<usize> for PartOne {
+    const PART: u8 = 1;
+
+    fn solve(&self, lines: &[&str]) -> usize {
+        lines
+            .iter()
+            .map(|line| compute_priority(find_common(line)))
+            .sum()
+    }
 }
 
-fn part_two(lines: &[&str]) -> usize {
-    lines
-        .chunks(3)
-        .map(|group| {
-            let common_item = group
-                .iter()
-                .map(|line| line.chars().collect::<HashSet<_>>())
-                .reduce(|a, b| a.intersection(b))
-                .expect("Should be one item");
-            if common_item.len() != 1 {
-                println!("Not exactly 1 common item: {:?}", common_item);
-                panic!();
-            }
-            compute_priority(*common_item.iter().next().unwrap())
-        })
-        .sum::<usize>()
+struct PartTwo {}
+impl Solver<usize> for PartTwo {
+    const PART: u8 = 2;
+
+    fn solve(&self, lines: &[&str]) -> usize {
+        lines
+            .chunks(3)
+            .map(|group| {
+                let common_item = group
+                    .iter()
+                    .map(|line| line.chars().collect::<HashSet<_>>())
+                    .reduce(|a, b| a.intersection(b))
+                    .expect("Should be one item");
+                if common_item.len() != 1 {
+                    println!("Not exactly 1 common item: {:?}", common_item);
+                    panic!();
+                }
+                compute_priority(*common_item.iter().next().unwrap())
+            })
+            .sum::<usize>()
+    }
 }

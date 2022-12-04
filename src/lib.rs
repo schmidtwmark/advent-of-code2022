@@ -4,72 +4,27 @@ use std::fmt::Display;
 use std::thread;
 use std::time::Instant;
 
-pub trait ProblemResult: Display + Sync + Eq + PartialEq + Debug {}
-impl<T> ProblemResult for T where T: Display + Sync + Eq + PartialEq + Debug {}
+pub trait InputResult: Display + Sync + Eq + PartialEq + Debug {}
+impl<T> InputResult for T where T: Display + Sync + Eq + PartialEq + Debug {}
 
-pub struct Problem<'a, D>
+pub trait Solver<D>: Sync
 where
-    D: ProblemResult,
+    D: InputResult,
 {
-    input: &'a str,
-    solution: Option<D>,
-}
+    const PART: u8;
+    fn solve(&self, lines: &[&str]) -> D;
 
-impl<'a, D> Problem<'a, D>
-where
-    D: ProblemResult,
-{
-    pub fn new_sample(sample: &'a str, solution: D) -> Self {
-        Self {
-            input: sample,
-            solution: Some(solution),
-        }
-    }
-
-    pub fn new_final(input: &'a str) -> Self {
-        Self {
-            input,
-            solution: None,
-        }
-    }
-}
-
-pub struct Solution<'a, D>
-where
-    D: ProblemResult,
-{
-    name: &'a str,
-    solver: &'a (dyn Fn(&[&str]) -> D + Sync),
-    problems: &'a [Problem<'a, D>],
-}
-
-impl<'a, D> Solution<'a, D>
-where
-    D: ProblemResult,
-{
-    pub fn new(
-        name: &'a str,
-        solver: &'a (dyn Fn(&[&str]) -> D + Sync),
-        problems: &'a [Problem<'a, D>],
-    ) -> Self {
-        Self {
-            name,
-            solver,
-            problems,
-        }
-    }
-
-    pub fn run_all(&self) {
+    fn run(&self, inputs: &[Input<D>]) {
         thread::scope(|s| {
-            for problem in self.problems {
+            for input in inputs {
                 s.spawn(move || {
                     let start = Instant::now();
-                    let result = (self.solver)(get_lines(problem.input).as_slice());
+                    let result = self.solve(get_lines(input.data).as_slice());
                     let elapsed = start.elapsed();
-                    if let Some(solution) = &problem.solution {
+                    if let Some(solution) = &input.solution {
                         assert_eq!(result, *solution);
                     } else {
-                        println!("{}: {} ({:?})", self.name, result, elapsed);
+                        println!("Part {}: {} ({:?})", Self::PART, result, elapsed);
                     }
                 });
             }
@@ -77,19 +32,33 @@ where
     }
 }
 
-fn get_lines(file: &str) -> Vec<&str> {
-    file.lines().collect_vec()
+pub struct Input<'a, D>
+where
+    D: InputResult,
+{
+    data: &'a str,
+    solution: Option<D>,
 }
 
-pub fn run_all<D>(solutions: &[Solution<D>])
+impl<'a, D> Input<'a, D>
 where
-    D: ProblemResult,
+    D: InputResult,
 {
-    thread::scope(|s| {
-        for solution in solutions {
-            s.spawn(move || {
-                solution.run_all();
-            });
+    pub fn new_sample(sample: &'a str, solution: D) -> Self {
+        Self {
+            data: sample,
+            solution: Some(solution),
         }
-    });
+    }
+
+    pub fn new_final(input: &'a str) -> Self {
+        Self {
+            data: input,
+            solution: None,
+        }
+    }
+}
+
+fn get_lines(file: &str) -> Vec<&str> {
+    file.lines().collect_vec()
 }

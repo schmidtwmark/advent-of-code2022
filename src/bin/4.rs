@@ -1,5 +1,6 @@
 use std::convert::TryFrom;
 
+use aoc::Solver;
 use itertools::Itertools;
 
 struct SectionAssignment {
@@ -43,30 +44,39 @@ fn to_sections<'a>(
     })
 }
 
-fn part_one(lines: &[&str]) -> usize {
-    to_sections(lines)
-        .filter(|(a, b)| a.contains_other(b) || b.contains_other(a))
-        .count()
+struct PartOne {}
+impl Solver<usize> for PartOne {
+    const PART: u8 = 1;
+
+    fn solve(&self, lines: &[&str]) -> usize {
+        to_sections(lines)
+            .filter(|(a, b)| a.contains_other(b) || b.contains_other(a))
+            .count()
+    }
 }
 
-fn part_two(lines: &[&str]) -> usize {
-    to_sections(lines).filter(|(a, b)| a.overlaps(b)).count()
+struct PartTwo {}
+impl Solver<usize> for PartTwo {
+    const PART: u8 = 2;
+
+    fn solve(&self, lines: &[&str]) -> usize {
+        to_sections(lines).filter(|(a, b)| a.overlaps(b)).count()
+    }
 }
 
 fn main() {
     let sample = include_str!("../../samples/4.txt");
     let input = include_str!("../../inputs/4.txt");
     let part_one_problems = [
-        aoc::Problem::new_sample(sample, 2),
-        aoc::Problem::new_final(input),
+        aoc::Input::new_sample(sample, 2),
+        aoc::Input::new_final(input),
     ];
-    let part_one = aoc::Solution::new("part_one", &part_one, &part_one_problems);
 
     let part_two_problems = [
-        aoc::Problem::new_sample(sample, 4),
-        aoc::Problem::new_final(input),
+        aoc::Input::new_sample(sample, 4),
+        aoc::Input::new_final(input),
     ];
-    let part_two = aoc::Solution::new("part_two", &part_two, &part_two_problems);
 
-    aoc::run_all(&[part_one, part_two]);
+    PartOne {}.run(&part_one_problems);
+    PartTwo {}.run(&part_two_problems);
 }
