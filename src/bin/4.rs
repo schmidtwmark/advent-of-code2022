@@ -30,42 +30,27 @@ impl SectionAssignment {
     }
 }
 
-fn part_one(lines: &[&str]) -> usize {
-    lines
-        .iter()
-        .filter_map(|line| {
-            let (a, b) = line
-                .split(',')
-                .map(|line| SectionAssignment::try_from(line).expect("Invalid input"))
-                .collect_tuple()
-                .unwrap();
+fn to_sections<'a>(
+    lines: &'a [&str],
+) -> impl Iterator<Item = (SectionAssignment, SectionAssignment)> + 'a {
+    lines.iter().map(|line| {
+        let (a, b) = line
+            .split(',')
+            .map(|line| SectionAssignment::try_from(line).expect("Invalid input"))
+            .collect_tuple()
+            .unwrap();
+        (a, b)
+    })
+}
 
-            if a.contains_other(&b) || b.contains_other(&a) {
-                Some(())
-            } else {
-                None
-            }
-        })
+fn part_one(lines: &[&str]) -> usize {
+    to_sections(lines)
+        .filter(|(a, b)| a.contains_other(b) || b.contains_other(a))
         .count()
 }
 
 fn part_two(lines: &[&str]) -> usize {
-    lines
-        .iter()
-        .filter_map(|line| {
-            let (a, b) = line
-                .split(',')
-                .map(|line| SectionAssignment::try_from(line).expect("Invalid input"))
-                .collect_tuple()
-                .unwrap();
-
-            if a.overlaps(&b) || b.overlaps(&a) {
-                Some(())
-            } else {
-                None
-            }
-        })
-        .count()
+    to_sections(lines).filter(|(a, b)| a.overlaps(b)).count()
 }
 
 fn main() {
