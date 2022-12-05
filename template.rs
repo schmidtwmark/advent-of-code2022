@@ -1,3 +1,4 @@
+use aoc::Solver;
 use itertools::Itertools;
 
 struct PartOne {}
