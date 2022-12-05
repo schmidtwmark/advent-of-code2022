@@ -85,11 +85,9 @@ fn read_input(lines: &[&str]) -> (Vec<Stack>, Vec<Instructon>) {
     (stacks, instructions)
 }
 
-struct PartOne {}
-impl Solver<String> for PartOne {
-    const PART: u8 = 1;
-
-    fn solve(&self, lines: &[&str]) -> String {
+struct Solution {}
+impl Solver<String> for Solution {
+    fn solve_part_one(&self, lines: &[&str]) -> String {
         let (mut stacks, instructions) = read_input(lines);
 
         for instruction in instructions {
@@ -98,13 +96,7 @@ impl Solver<String> for PartOne {
 
         stacks.iter().filter_map(|stack| stack.front()).collect()
     }
-}
-
-struct PartTwo {}
-impl Solver<String> for PartTwo {
-    const PART: u8 = 2;
-
-    fn solve(&self, lines: &[&str]) -> String {
+    fn solve_part_two(&self, lines: &[&str]) -> String {
         let (mut stacks, instructions) = read_input(lines);
 
         for instruction in instructions {
@@ -128,6 +120,5 @@ fn main() {
         aoc::Input::new_final(input),
     ];
 
-    PartOne {}.run(&part_one_problems);
-    PartTwo {}.run(&part_two_problems);
+    Solution {}.run(&part_one_problems, &part_two_problems);
 }

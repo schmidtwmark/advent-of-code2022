@@ -15,15 +15,12 @@ fn main() {
         aoc::Input::new_final(input),
     ];
 
-    PartOne {}.run(&part_one_problems);
-    PartTwo {}.run(&part_two_problems);
+    Solution {}.run(&part_one_problems, &part_two_problems);
 }
 
-struct PartOne {}
-impl Solver<usize> for PartOne {
-    const PART: u8 = 1;
-
-    fn solve(&self, lines: &[&str]) -> usize {
+struct Solution {}
+impl Solver<usize> for Solution {
+    fn solve_part_one(&self, lines: &[&str]) -> usize {
         lines
             .split(|line| line.is_empty())
             .map(|group| {
@@ -36,13 +33,8 @@ impl Solver<usize> for PartOne {
             .max()
             .unwrap()
     }
-}
 
-struct PartTwo {}
-impl aoc::Solver<usize> for PartTwo {
-    const PART: u8 = 2;
-
-    fn solve(&self, lines: &[&str]) -> usize {
+    fn solve_part_two(&self, lines: &[&str]) -> usize {
         let sums = lines
             .split(|line| line.is_empty())
             .map(|group| {

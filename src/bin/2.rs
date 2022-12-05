@@ -14,8 +14,7 @@ fn main() {
         aoc::Input::new_final(input),
     ];
 
-    PartOne {}.run(&part_one_problems);
-    PartTwo {}.run(&part_two_problems);
+    Solution {}.run(&part_one_problems, &part_two_problems);
 }
 
 enum Outcome {
@@ -52,11 +51,9 @@ fn score_game(other: &str, me: &str) -> usize {
             Outcome::Draw => 3,
         }
 }
-struct PartOne {}
-impl Solver<usize> for PartOne {
-    const PART: u8 = 1;
-
-    fn solve(&self, lines: &[&str]) -> usize {
+struct Solution {}
+impl Solver<usize> for Solution {
+    fn solve_part_one(&self, lines: &[&str]) -> usize {
         lines
             .iter()
             .map(|line| {
@@ -65,13 +62,7 @@ impl Solver<usize> for PartOne {
             })
             .sum()
     }
-}
-
-struct PartTwo {}
-impl Solver<usize> for PartTwo {
-    const PART: u8 = 2;
-
-    fn solve(&self, lines: &[&str]) -> usize {
+    fn solve_part_two(&self, lines: &[&str]) -> usize {
         let recalculated = lines
             .iter()
             .map(|line| {
@@ -100,7 +91,7 @@ impl Solver<usize> for PartTwo {
                 )
             })
             .collect_vec();
-        PartOne {}.solve(
+        self.solve_part_one(
             recalculated
                 .iter()
                 .map(|s| s.as_str())
