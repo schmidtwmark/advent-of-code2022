@@ -12,7 +12,7 @@ if [ -z "$AOC_TOKEN" ]; then
 fi
 
 URL="https://adventofcode.com/2022/day/$1/input"
-curl $URL --cookie $AOC_TOKEN > inputs/$1.txt
+curl -A "https://github.com/schmidtwmark/advent-of-code2022/blob/main/fetch.sh by mark.schmidt@hey.com" $URL --cookie $AOC_TOKEN > inputs/$1.txt
 touch samples/$1.txt
 cp template.rs src/bin/$1.rs
 sed -i '' -e "s/aaaaa/$1/g"  src/bin/$1.rs
