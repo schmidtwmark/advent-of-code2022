@@ -1,4 +1,6 @@
 use itertools::Itertools;
+use log::{debug, error, info};
+use simple_logger::SimpleLogger;
 use std::fmt::Debug;
 use std::fmt::Display;
 use std::thread;
@@ -15,7 +17,7 @@ where
     fn solve_part_one(&self, lines: &[&str]) -> D;
     fn solve_part_two(&self, lines: &[&str]) -> D;
 
-    fn run_single(&self, solver: &dyn Fn(&[&str]) -> D, lines: &[&str]) -> (D, Duration) {
+    fn run_single(&self, solver: &(dyn Fn(&[&str]) -> D + Sync), lines: &[&str]) -> (D, Duration) {
         let start = Instant::now();
         let result = solver(lines);
         let elapsed = start.elapsed();
@@ -26,40 +28,49 @@ where
         self.run_single(&|lines| self.solve_part_one(lines), lines)
     }
 
-    fn run_all_part_one(&self, inputs: &[Input<D>]) {
+    fn run_all_for_solver<const PART: u8>(
+        &self,
+        solver: &(dyn Fn(&[&str]) -> D + Sync),
+        inputs: &[Input<D>],
+    ) {
         thread::scope(|s| {
-            for input in inputs {
+            for (idx, input) in inputs.iter().enumerate() {
                 s.spawn(move || {
-                    let (result, elapsed) = self.run_part_one(get_lines(input.data).as_slice());
+                    let (result, elapsed) =
+                        self.run_single(solver, get_lines(input.data).as_slice());
                     if let Some(solution) = &input.solution {
-                        assert_eq!(result, *solution);
+                        if solution == &result {
+                            debug!(
+                                "Part {PART} sample #{idx} passed: {} ({:?})",
+                                result, elapsed
+                            );
+                        } else {
+                            error!(
+                                "Part {PART} sample #{idx} failed : {} (expected {}, {:?})",
+                                result, solution, elapsed
+                            );
+                        }
                     } else {
-                        println!("Part 1: {} ({:?})", result, elapsed);
+                        info!("Part {PART} final: {} ({:?})", result, elapsed);
                     }
                 });
             }
         })
+    }
+
+    fn run_all_part_one(&self, inputs: &[Input<D>]) {
+        self.run_all_for_solver::<1>(&|lines| self.solve_part_one(lines), inputs);
     }
 
     fn run_part_two(&self, lines: &[&str]) -> (D, Duration) {
         self.run_single(&|lines| self.solve_part_two(lines), lines)
     }
     fn run_all_part_two(&self, inputs: &[Input<D>]) {
-        thread::scope(|s| {
-            for input in inputs {
-                s.spawn(move || {
-                    let (result, elapsed) = self.run_part_two(get_lines(input.data).as_slice());
-                    if let Some(solution) = &input.solution {
-                        assert_eq!(result, *solution);
-                    } else {
-                        println!("Part 2: {} ({:?})", result, elapsed);
-                    }
-                });
-            }
-        })
+        self.run_all_for_solver::<2>(&|lines| self.solve_part_two(lines), inputs);
     }
 
     fn run(&self, part_one_inputs: &[Input<D>], part_two_inputs: &[Input<D>]) {
+        SimpleLogger::new().init().unwrap();
         thread::scope(|s| {
             s.spawn(move || {
                 self.run_all_part_one(part_one_inputs);
