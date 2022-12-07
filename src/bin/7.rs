@@ -104,11 +104,11 @@ impl Directory {
         total_size
     }
 
-    fn get_directories(&self) -> Vec<&Box<Directory>> {
+    fn get_directories(&self) -> Vec<&Directory> {
         let mut directories = Vec::new();
         for file in self.files.values() {
             if let File::Directory(dir) = file {
-                directories.push(dir);
+                directories.push(dir.as_ref());
                 directories.extend(dir.get_directories());
             }
         }
