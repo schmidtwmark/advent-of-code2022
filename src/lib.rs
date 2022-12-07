@@ -70,7 +70,7 @@ where
     }
 
     fn run(&self, part_one_inputs: &[Input<D>], part_two_inputs: &[Input<D>]) {
-        SimpleLogger::new().init().unwrap();
+        SimpleLogger::new().env().init().unwrap();
         thread::scope(|s| {
             s.spawn(move || {
                 self.run_all_part_one(part_one_inputs);
