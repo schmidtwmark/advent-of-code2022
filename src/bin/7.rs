@@ -175,7 +175,7 @@ fn build_filesystem(output: Vec<Output>) -> Box<Directory> {
 }
 
 struct Solution {}
-impl Solver<usize> for Solution {
+impl Solver<'_, usize> for Solution {
     fn solve_part_one(&self, lines: &[&str]) -> usize {
         let output = process(lines);
         let mut root = build_filesystem(output);

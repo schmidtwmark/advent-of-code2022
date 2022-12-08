@@ -19,7 +19,7 @@ fn main() {
 }
 
 struct Solution {}
-impl Solver<usize> for Solution {
+impl Solver<'_, usize> for Solution {
     fn solve_part_one(&self, lines: &[&str]) -> usize {
         lines
             .split(|line| line.is_empty())

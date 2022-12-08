@@ -52,7 +52,7 @@ fn score_game(other: &str, me: &str) -> usize {
         }
 }
 struct Solution {}
-impl Solver<usize> for Solution {
+impl Solver<'_, usize> for Solution {
     fn solve_part_one(&self, lines: &[&str]) -> usize {
         lines
             .iter()

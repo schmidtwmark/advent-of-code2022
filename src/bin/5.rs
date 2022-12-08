@@ -86,7 +86,7 @@ fn read_input(lines: &[&str]) -> (Vec<Stack>, Vec<Instructon>) {
 }
 
 struct Solution {}
-impl Solver<String> for Solution {
+impl Solver<'_, String> for Solution {
     fn solve_part_one(&self, lines: &[&str]) -> String {
         let (mut stacks, instructions) = read_input(lines);
 

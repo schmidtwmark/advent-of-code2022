@@ -1,8 +1,7 @@
 #![feature(anonymous_lifetime_in_impl_trait)]
 use aoc::Grid;
 use aoc::Solver;
-use itertools::Itertools;
-use log::{debug, info};
+use log::debug;
 
 fn calculate_scenic_score(value: &u8, neighbors: impl Iterator<Item = &u8> + Clone) -> usize {
     let visible = neighbors.clone().take_while(|&n| n < value).count();
@@ -13,7 +12,7 @@ fn calculate_scenic_score(value: &u8, neighbors: impl Iterator<Item = &u8> + Clo
     }
 }
 struct Solution {}
-impl Solver<usize> for Solution {
+impl Solver<'_, usize> for Solution {
     fn solve_part_one(&self, lines: &[&str]) -> usize {
         let grid: Grid<u8> = Grid::from_lines(lines, &|c: char| c.to_digit(10).unwrap() as u8);
         debug!("Grid: {}, {}, {}", grid.width, grid.height, grid);

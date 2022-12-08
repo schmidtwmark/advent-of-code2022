@@ -26,7 +26,7 @@ fn find_first_unique_packet(line: &str, unique_count: usize) -> usize {
 }
 
 struct Solution {}
-impl Solver<usize> for Solution {
+impl Solver<'_, usize> for Solution {
     fn solve_part_one(&self, lines: &[&str]) -> usize {
         let line = lines.first().unwrap();
         find_first_unique_packet(line, 4)

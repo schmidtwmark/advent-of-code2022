@@ -45,7 +45,7 @@ fn to_sections<'a>(
 }
 
 struct Solution {}
-impl Solver<usize> for Solution {
+impl Solver<'_, usize> for Solution {
     fn solve_part_one(&self, lines: &[&str]) -> usize {
         to_sections(lines)
             .filter(|(a, b)| a.contains_other(b) || b.contains_other(a))

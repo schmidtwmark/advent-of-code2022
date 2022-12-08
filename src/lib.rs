@@ -1,19 +1,119 @@
+#![feature(anonymous_lifetime_in_impl_trait)]
+#![feature(associated_type_bounds)]
+use clap::Parser;
 use itertools::Itertools;
-use log::{debug, error, info};
+use log::{error, info};
 use simple_logger::SimpleLogger;
 use std::fmt;
 use std::fmt::Debug;
 use std::fmt::Display;
+use std::str::FromStr;
 use std::thread;
 use std::time::Duration;
 use std::time::Instant;
 
-pub trait InputResult: Display + Sync + Eq + PartialEq + Debug {}
-impl<T> InputResult for T where T: Display + Sync + Eq + PartialEq + Debug {}
+#[derive(Clone, PartialEq, Copy)]
+pub enum Part {
+    One,
+    Two,
+    All,
+}
 
-pub trait Solver<D>: Sync
+impl FromStr for Part {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "1" => Ok(Part::One),
+            "2" => Ok(Part::Two),
+            "all" => Ok(Part::All),
+            _ => Err(format!("Unknown part {}", s)),
+        }
+    }
+}
+
+impl Display for Part {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Part::One => write!(f, "1"),
+            Part::Two => write!(f, "2"),
+            Part::All => write!(f, "all"),
+        }
+    }
+}
+
+#[derive(Clone, PartialEq, Copy)]
+pub enum Target {
+    Sample(usize),
+    Final,
+    All,
+}
+
+impl FromStr for Target {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "final" | "f" => Ok(Target::Final),
+            "all" | "a" => Ok(Target::All),
+            _ => {
+                if let Ok(num) = s.parse() {
+                    Ok(Target::Sample(num))
+                } else {
+                    Err::<Self, Self::Err>(format!("Unknown target {}", s))
+                }
+            }
+        }
+    }
+}
+
+impl Display for Target {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Target::Sample(idx) => write!(f, "sample {}", idx),
+            Target::Final => write!(f, "final"),
+            Target::All => write!(f, "all"),
+        }
+    }
+}
+
+impl Target {
+    fn filter_inputs<'a, D: InputResult>(
+        self,
+        inputs: &'a [Input<D>],
+    ) -> impl Iterator<Item = (usize, &'a Input<'a, D>)> {
+        if let Target::Sample(idx) = self {
+            if idx >= inputs.len() || inputs[idx].solution.is_none() {
+                panic!("Sample #{} does not exist", idx);
+            }
+        }
+
+        inputs
+            .iter()
+            .enumerate()
+            .filter(move |(idx, input)| match self {
+                Target::Sample(sample_idx) => input.solution.is_some() && *idx == sample_idx,
+                Target::Final => input.solution.is_none(),
+                Target::All => true,
+            })
+    }
+}
+
+#[derive(Parser, Copy, Clone)]
+#[command(author, version, about, long_about = None)]
+pub struct Cli {
+    #[arg(short, long, default_value_t = Part::All)]
+    pub part: Part,
+    #[arg(short, long, default_value_t = Target::All)]
+    pub target: Target,
+}
+
+pub trait InputResult: Display + Send + Sync + Eq + PartialEq + Debug {}
+impl<T> InputResult for T where T: Display + Send + Sync + Eq + PartialEq + Debug {}
+
+pub trait Solver<'a, D>: Sync
 where
-    D: InputResult,
+    D: InputResult + Sync + 'a,
 {
     fn solve_part_one(&self, lines: &[&str]) -> D;
     fn solve_part_two(&self, lines: &[&str]) -> D;
@@ -29,19 +129,19 @@ where
         self.run_single(&|lines| self.solve_part_one(lines), lines)
     }
 
-    fn run_all_for_solver<const PART: u8>(
-        &self,
-        solver: &(dyn Fn(&[&str]) -> D + Sync),
-        inputs: &[Input<D>],
+    fn run_all_for_solver<'b, const PART: u8>(
+        &'a self,
+        solver: &'b (dyn Fn(&[&str]) -> D + Sync),
+        inputs: impl Iterator<Item = (usize, &'a Input<'a, D>)>,
     ) {
         thread::scope(|s| {
-            for (idx, input) in inputs.iter().enumerate() {
+            for (idx, input) in inputs {
                 s.spawn(move || {
                     let (result, elapsed) =
                         self.run_single(solver, get_lines(input.data).as_slice());
                     if let Some(solution) = &input.solution {
                         if solution == &result {
-                            debug!(
+                            info!(
                                 "Part {PART} sample #{idx} passed: {} ({:?})",
                                 result, elapsed
                             );
@@ -59,26 +159,34 @@ where
         })
     }
 
-    fn run_all_part_one(&self, inputs: &[Input<D>]) {
+    fn run_all_part_one(&'a self, inputs: impl Iterator<Item = (usize, &'a Input<'a, D>)>) {
         self.run_all_for_solver::<1>(&|lines| self.solve_part_one(lines), inputs);
     }
 
     fn run_part_two(&self, lines: &[&str]) -> (D, Duration) {
         self.run_single(&|lines| self.solve_part_two(lines), lines)
     }
-    fn run_all_part_two(&self, inputs: &[Input<D>]) {
+    fn run_all_part_two(&'a self, inputs: impl Iterator<Item = (usize, &'a Input<'a, D>)>) {
         self.run_all_for_solver::<2>(&|lines| self.solve_part_two(lines), inputs);
     }
 
-    fn run(&self, part_one_inputs: &[Input<D>], part_two_inputs: &[Input<D>]) {
+    fn run(&'a self, part_one_inputs: &'a [Input<D>], part_two_inputs: &'a [Input<D>]) {
+        let args = Cli::parse();
+        let part_one_inputs = args.target.filter_inputs(part_one_inputs);
+        let part_two_inputs = args.target.filter_inputs(part_two_inputs);
+
         SimpleLogger::new().env().init().unwrap();
         thread::scope(|s| {
-            s.spawn(move || {
-                self.run_all_part_one(part_one_inputs);
-            });
-            s.spawn(move || {
-                self.run_all_part_two(part_two_inputs);
-            });
+            if args.part == Part::One || args.part == Part::All {
+                s.spawn(|| {
+                    self.run_all_part_one(part_one_inputs);
+                });
+            }
+            if args.part == Part::Two || args.part == Part::All {
+                s.spawn(|| {
+                    self.run_all_part_two(part_two_inputs);
+                });
+            }
         })
     }
 }
