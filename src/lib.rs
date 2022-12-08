@@ -12,7 +12,7 @@ use std::thread;
 use std::time::Duration;
 use std::time::Instant;
 
-#[derive(Clone, PartialEq, Copy)]
+#[derive(Clone, PartialEq, Eq, Copy)]
 pub enum Part {
     One,
     Two,
@@ -42,9 +42,10 @@ impl Display for Part {
     }
 }
 
-#[derive(Clone, PartialEq, Copy)]
+#[derive(Clone, PartialEq, Eq, Copy)]
 pub enum Target {
     Sample(usize),
+    Samples,
     Final,
     All,
 }
@@ -56,6 +57,7 @@ impl FromStr for Target {
         match s {
             "final" | "f" => Ok(Target::Final),
             "all" | "a" => Ok(Target::All),
+            "samples" | "s" => Ok(Target::Samples),
             _ => {
                 if let Ok(num) = s.parse() {
                     Ok(Target::Sample(num))
@@ -71,6 +73,7 @@ impl Display for Target {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             Target::Sample(idx) => write!(f, "sample {}", idx),
+            Target::Samples => write!(f, "samples"),
             Target::Final => write!(f, "final"),
             Target::All => write!(f, "all"),
         }
@@ -93,6 +96,7 @@ impl Target {
             .enumerate()
             .filter(move |(idx, input)| match self {
                 Target::Sample(sample_idx) => input.solution.is_some() && *idx == sample_idx,
+                Target::Samples => input.solution.is_some(),
                 Target::Final => input.solution.is_none(),
                 Target::All => true,
             })
