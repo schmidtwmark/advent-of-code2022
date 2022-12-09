@@ -2,7 +2,7 @@ use aoc::Solver;
 use itertools::Itertools;
 
 struct Solution {}
-impl Solver<usize> for Solution {
+impl Solver<'_, usize> for Solution {
     fn solve_part_one(&self, lines: &[&str]) -> usize {
         Default::default()
     }
