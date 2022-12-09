@@ -87,7 +87,15 @@ impl Target {
     ) -> impl Iterator<Item = (usize, &'a Input<'a, D>)> {
         if let Target::Sample(idx) = self {
             if idx >= inputs.len() || inputs[idx].solution.is_none() {
-                panic!("Sample #{} does not exist", idx);
+                panic!(
+                    "Sample #{} does not exist, inputs: {:?}",
+                    idx,
+                    inputs
+                        .iter()
+                        .enumerate()
+                        .map(|(idx, input)| (idx, input.solution.clone()))
+                        .collect_vec()
+                );
             }
         }
 
@@ -112,8 +120,8 @@ pub struct Cli {
     pub target: Target,
 }
 
-pub trait InputResult: Display + Send + Sync + Eq + PartialEq + Debug {}
-impl<T> InputResult for T where T: Display + Send + Sync + Eq + PartialEq + Debug {}
+pub trait InputResult: Display + Send + Sync + Eq + PartialEq + Debug + Clone {}
+impl<T> InputResult for T where T: Display + Send + Sync + Eq + PartialEq + Debug + Clone {}
 
 pub trait Solver<'a, D>: Sync
 where
@@ -176,17 +184,17 @@ where
 
     fn run(&'a self, part_one_inputs: &'a [Input<D>], part_two_inputs: &'a [Input<D>]) {
         let args = Cli::parse();
-        let part_one_inputs = args.target.filter_inputs(part_one_inputs);
-        let part_two_inputs = args.target.filter_inputs(part_two_inputs);
 
         SimpleLogger::new().env().init().unwrap();
         thread::scope(|s| {
             if args.part == Part::One || args.part == Part::All {
+                let part_one_inputs = args.target.filter_inputs(part_one_inputs);
                 s.spawn(|| {
                     self.run_all_part_one(part_one_inputs);
                 });
             }
             if args.part == Part::Two || args.part == Part::All {
+                let part_two_inputs = args.target.filter_inputs(part_two_inputs);
                 s.spawn(|| {
                     self.run_all_part_two(part_two_inputs);
                 });
@@ -195,6 +203,7 @@ where
     }
 }
 
+#[derive(Eq, PartialEq, Debug, Clone)]
 pub struct Input<'a, D>
 where
     D: InputResult,
