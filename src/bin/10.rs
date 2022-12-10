@@ -2,6 +2,7 @@ use aoc::Grid;
 use aoc::Solver;
 use itertools::Itertools;
 use log::debug;
+use log::info;
 use std::{collections::VecDeque, str::FromStr};
 
 #[derive(Debug)]
@@ -33,30 +34,33 @@ impl Instruction {
     }
 }
 
+fn get_strengths(instructions: impl Iterator<Item = Instruction>) -> VecDeque<isize> {
+    let mut x = 1;
+
+    let signal_strengths: VecDeque<_> = instructions
+        .flat_map(|i| {
+            let cycles = i.cycles();
+            let out = vec![x; cycles as usize];
+
+            if let Instruction::Addx(val) = i {
+                x += val;
+            }
+
+            debug!("{:?}: -> {:?}", i, out);
+            out
+        })
+        .collect();
+
+    signal_strengths
+}
+
 struct Solution {}
 impl Solver<'_, isize> for Solution {
     fn solve_part_one(&self, lines: &[&str]) -> isize {
-        let mut instructions = lines.iter().map(|s| Instruction::from_str(s).unwrap());
+        let instructions = lines.iter().map(|s| Instruction::from_str(s).unwrap());
 
-        let mut x = 1;
-
-        let mut signal_strengths: VecDeque<_> = instructions
-            .flat_map(|i| {
-                let cycles = i.cycles();
-                let out = vec![x; cycles as usize];
-
-                if let Instruction::Addx(val) = i {
-                    x += val;
-                }
-
-                debug!("{:?}: -> {:?}", i, out);
-                out
-            })
-            .collect();
-
+        let mut signal_strengths = get_strengths(instructions);
         signal_strengths.push_front(0); // Offset
-        signal_strengths.push_back(x); // Add final step
-
         let signal_strengths = signal_strengths.into_iter().enumerate().collect_vec();
         debug!("Signals: {:?}", signal_strengths);
 
@@ -67,6 +71,22 @@ impl Solver<'_, isize> for Solution {
     }
 
     fn solve_part_two(&self, lines: &[&str]) -> isize {
+        let instructions = lines.iter().map(|s| Instruction::from_str(s).unwrap());
+
+        let mut signal_strengths = get_strengths(instructions);
+
+        let width = 40;
+        let height = 6;
+        let mut grid = Grid::new(vec![' '; width * height], 40, 6);
+
+        for (cycle, x) in signal_strengths.iter().enumerate() {
+            let diff = (x - (cycle % 40) as isize).abs();
+
+            *grid.mut_at(grid.index_to_pos(cycle)) = if diff <= 1 { '#' } else { '.' };
+
+            debug!("Cycle {}, x is {}:\n{}, ", cycle, x, grid);
+        }
+
         Default::default()
     }
 }

@@ -265,12 +265,17 @@ impl<T> Grid<T> {
         let (x, y) = pos;
         y * self.width + x
     }
+    pub fn index_to_pos(&self, idx: usize) -> (usize, usize) {
+        let x = idx % self.width;
+        let y = idx / self.width;
+        (x, y)
+    }
 
     pub fn at(&self, pos: (usize, usize)) -> &T {
         &self.state[self.pos_to_index(pos)]
     }
 
-    pub fn _mut_at(&mut self, pos: (usize, usize)) -> &mut T {
+    pub fn mut_at(&mut self, pos: (usize, usize)) -> &mut T {
         let index = self.pos_to_index(pos);
         &mut self.state[index]
     }
