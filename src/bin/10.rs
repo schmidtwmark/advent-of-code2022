@@ -73,7 +73,7 @@ impl Solver<'_, isize> for Solution {
     fn solve_part_two(&self, lines: &[&str]) -> isize {
         let instructions = lines.iter().map(|s| Instruction::from_str(s).unwrap());
 
-        let mut signal_strengths = get_strengths(instructions);
+        let signal_strengths = get_strengths(instructions);
 
         let width = 40;
         let height = 6;
@@ -87,6 +87,7 @@ impl Solver<'_, isize> for Solution {
             debug!("Cycle {}, x is {}:\n{}, ", cycle, x, grid);
         }
 
+        info!("Final Grid: {}", grid);
         Default::default()
     }
 }
