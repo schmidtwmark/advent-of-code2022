@@ -84,7 +84,7 @@ impl Monkey {
         }
     }
 
-    fn exec(&mut self, divide: bool) -> Vec<(Item, usize)> {
+    fn exec(&mut self, divide: bool, superdivisor: u128) -> Vec<(Item, usize)> {
         self.inspection_count += self.items.len();
 
         let passing_items = self
@@ -99,6 +99,7 @@ impl Monkey {
                 if divide {
                     new_item /= 3;
                 }
+                new_item %= superdivisor;
                 let target = if new_item % self.test.divisor == 0 {
                     self.test.true_monkey
                 } else {
@@ -114,10 +115,10 @@ impl Monkey {
     }
 }
 
-fn simulate(monkeys: &mut [Monkey], round: usize, divide: bool) {
+fn simulate(monkeys: &mut [Monkey], round: usize, divide: bool, superdivisor: u128) {
     for monkey_idx in 0..monkeys.len() {
         let monkey = &mut monkeys[monkey_idx];
-        let passing_items = monkey.exec(divide);
+        let passing_items = monkey.exec(divide, superdivisor);
         for (item, target) in passing_items {
             monkeys[target].items.push(item);
         }
@@ -134,8 +135,10 @@ impl Solver<'_, usize> for Solution {
     fn solve_part_one(&self, lines: &[&str]) -> usize {
         let mut monkeys = lines.split(|s| s.is_empty()).map(Monkey::new).collect_vec();
 
+        let superdivisor: u128 = monkeys.iter().map(|m| m.test.divisor).product();
+        debug!("Superdivisor: {}", superdivisor);
         for round in 1..=20 {
-            simulate(&mut monkeys, round, true);
+            simulate(&mut monkeys, round, true, superdivisor);
         }
 
         for (monkey_idx, monkey) in monkeys.iter().enumerate() {
@@ -157,8 +160,11 @@ impl Solver<'_, usize> for Solution {
     fn solve_part_two(&self, lines: &[&str]) -> usize {
         let mut monkeys = lines.split(|s| s.is_empty()).map(Monkey::new).collect_vec();
 
+        let superdivisor: u128 = monkeys.iter().map(|m| m.test.divisor).product();
+        debug!("Superdivisor: {}", superdivisor);
+
         for round in 1..=10000 {
-            simulate(&mut monkeys, round, false);
+            simulate(&mut monkeys, round, false, superdivisor);
         }
 
         for (monkey_idx, monkey) in monkeys.iter().enumerate() {
