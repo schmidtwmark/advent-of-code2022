@@ -279,6 +279,42 @@ impl<T> Grid<T> {
         let index = self.pos_to_index(pos);
         &mut self.state[index]
     }
+    pub fn cardinal_neighbor_positions(&self, pos: (usize, usize)) -> Vec<(usize, usize)> {
+        let (x, y) = (pos.0 as i64, pos.1 as i64);
+        let neighbors = [(x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)];
+        neighbors
+            .iter()
+            .filter(|(x, y)| {
+                (0..self.width as i64).contains(x) && (0..self.height as i64).contains(y)
+            })
+            .map(|(x, y)| (*x as usize, *y as usize))
+            .collect_vec()
+    }
+
+    pub fn cardinal_neighbors(&self, pos: (usize, usize)) -> impl Iterator<Item = &T> {
+        let (x, y) = pos;
+        let delta = -1..=1;
+        delta
+            .clone()
+            .cartesian_product(delta)
+            .filter_map(move |(dx, dy): (i64, i64)| {
+                if (dx == 0 && dy == 0) || (dx * dy).abs() == 1 {
+                    None
+                } else {
+                    let new_x = x as i64 + dx;
+                    let new_y = y as i64 + dy;
+                    if new_x >= 0
+                        && new_x < self.width as i64
+                        && new_y >= 0
+                        && new_y < self.height as i64
+                    {
+                        Some(self.at((new_x as usize, new_y as usize)))
+                    } else {
+                        None
+                    }
+                }
+            })
+    }
 
     pub fn neighbors(&self, pos: (usize, usize)) -> impl Iterator<Item = &T> {
         let (x, y) = pos;
