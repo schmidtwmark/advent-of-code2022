@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use aoc::Solver;
 use itertools::Itertools;
-use log::debug;
+use log::{debug, info};
 use std::cmp::Ordering;
 
 #[derive(Debug, Clone)]
@@ -32,7 +32,7 @@ impl Packet {
             }
             (Packet::Integer(_), Packet::List(_)) => {
                 let retry_packet = Packet::List(vec![self.clone()]);
-                retry_packet.compare(&other)
+                retry_packet.compare(other)
             }
             (Packet::List(_), Packet::Integer(_)) => {
                 let retry_packet = Packet::List(vec![other.clone()]);
@@ -125,7 +125,47 @@ impl Solver<'_, usize> for Solution {
     }
 
     fn solve_part_two(&self, lines: &[&str]) -> usize {
-        Default::default()
+        let divider_packets = vec![
+            Packet::List(vec![Packet::List(vec![Packet::Integer(2)])]),
+            Packet::List(vec![Packet::List(vec![Packet::Integer(6)])]),
+        ];
+
+        let packets = lines
+            .iter()
+            .filter_map(|line| {
+                if line.is_empty() {
+                    None
+                } else {
+                    Packet::from_str(line).ok()
+                }
+            })
+            .chain(divider_packets.iter().cloned())
+            .sorted_by(|a, b| a.compare(b))
+            .collect_vec();
+
+        divider_packets
+            .iter()
+            .map(|divider_packet| {
+                let search_result =
+                    packets.binary_search_by(|packet| packet.compare(divider_packet));
+                match search_result {
+                    Ok(idx) => {
+                        info!(
+                            "Found divider packet {:?}, found index {}",
+                            divider_packet, idx
+                        );
+                        idx + 1
+                    }
+                    Err(idx) => {
+                        info!(
+                            "Could not find divider packet {:?}, found index {}",
+                            divider_packet, idx
+                        );
+                        idx
+                    }
+                }
+            })
+            .product()
     }
 }
 
@@ -138,7 +178,7 @@ fn main() {
     ];
 
     let part_two_problems = [
-        aoc::Input::new_sample(sample, Default::default()), // TODO: Fill in expected sample result
+        aoc::Input::new_sample(sample, 140),
         aoc::Input::new_final(input),
     ];
 
