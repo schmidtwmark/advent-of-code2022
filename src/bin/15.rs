@@ -79,26 +79,28 @@ impl Solver<'_, usize> for Solution {
                 (sensor, (beacon, distance))
             })
             .collect();
-        let mut x = 0;
-        while x <= target {
-            let mut y = 0;
+        let mut y = 0;
+        while y <= target {
+            let mut x = 0;
             let start = Instant::now();
-            while y <= target {
+            while x <= target {
                 debug!("Checking target {:?}", (x, y));
                 let mut occluded = false;
                 for (sensor, (beacon, distance)) in sensors.iter() {
                     let target_distance = manhattan_distance((x, y), *sensor);
                     if target_distance <= *distance {
+                        let distance_to_y = (y - sensor.1).abs();
+                        let occluded_width = distance - distance_to_y;
                         debug!(
-                            "Target {:?} is occluded by sensor {:?} and beacon {:?}",
+                            "Target {:?} is occluded by sensor {:?} and beacon {:?}, distance_to_y: {}, occluded_width: {}",
                             (x, y),
                             sensor,
-                            beacon
-                        );
-                        let distance_to_y = (y - sensor.1).abs();
-                        // TODO: Move to the next possible y value
-                        let occluded_width = distance - distance_to_y;
+                            beacon,
+                            distance_to_y,
+                            occluded_width
 
+                        );
+                        x = sensor.0 + occluded_width + 1;
                         occluded = true;
                         break;
                     }
@@ -107,10 +109,9 @@ impl Solver<'_, usize> for Solution {
                     info!("Target {:?} is not occluded by any beacon!", (x, y));
                     return (x * 4000000 + y) as usize;
                 }
-                y += 1;
             }
-            info!("Completed checking row: {} in {:?}", x, start.elapsed());
-            x += 1;
+            info!("Completed row: {} in {:?}", y, start.elapsed());
+            y += 1;
         }
         0
     }
