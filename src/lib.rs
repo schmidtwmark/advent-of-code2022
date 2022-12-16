@@ -488,11 +488,11 @@ where
         }
     }
 
-    pub fn all_vertices(&self) -> HashSet<V> {
-        self.edges.keys().cloned().collect()
+    pub fn all_vertices(&self) -> impl Iterator<Item = &V> {
+        self.edges.keys()
     }
 
-    pub fn all_distances(&self, start: V) -> HashMap<V, usize> {
+    pub fn all_distances<'a>(&'a self, start: &'a V) -> HashMap<&'a V, usize> {
         let mut visited = HashSet::new();
         let mut queue = VecDeque::new();
         queue.push_back((start, 0));
@@ -500,16 +500,16 @@ where
         let mut distances = HashMap::new();
 
         while let Some((vertex, depth)) = queue.pop_front() {
-            if visited.contains(&vertex) {
+            if visited.contains(vertex) {
                 continue;
             }
-            visited.insert(vertex.clone());
+            visited.insert(vertex);
 
-            distances.insert(vertex.clone(), depth);
+            distances.insert(vertex, depth);
 
-            if let Some(edges) = self.edges.get(&vertex) {
+            if let Some(edges) = self.edges.get(vertex) {
                 for (_, neighbor) in edges {
-                    queue.push_back((neighbor.clone(), depth + 1));
+                    queue.push_back((neighbor, depth + 1));
                 }
             }
         }

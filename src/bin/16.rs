@@ -239,6 +239,18 @@ impl Branch {
 
         new_branches.into_iter()
     }
+
+    fn score(
+        &self,
+        all_valves: &HashSet<usize>,
+        distances: &HashMap<usize, HashMap<usize, usize>>,
+    ) -> i64 {
+        let unvisited_valves = all_valves.difference(&self.open_valves);
+        unvisited_valves
+            .map(|v| distances[&self.current_node][v] as i64)
+            .sum::<i64>()
+            - self.pressure_released as i64
+    }
 }
 
 struct Solution {}
@@ -300,6 +312,25 @@ impl Solver<'_, usize> for Solution {
         let (graph, name_map, flow_rates) = parse_lines(lines);
         graph.debug_connections();
 
+        let all_valves: HashSet<usize> = graph
+            .all_vertices()
+            .copied()
+            .filter(|v| flow_rates[v] > 0)
+            .collect();
+        let distance: HashMap<usize, HashMap<usize, usize>> = graph
+            .all_vertices()
+            .map(|v| {
+                (
+                    *v,
+                    graph
+                        .all_distances(v)
+                        .into_iter()
+                        .map(|(target, distance)| (*target, flow_rates[target] * distance))
+                        .collect(),
+                )
+            })
+            .collect();
+
         let mut branches = vec![Branch::new(*name_map.get_by_left("AA").unwrap())];
 
         for minute in 1..=26 {
@@ -308,7 +339,22 @@ impl Solver<'_, usize> for Solution {
                 new_branches.extend(branch.step2(&graph, &flow_rates));
             }
 
-            while new_branches.len() > 500000 {
+            while new_branches.len() > 100000 {
+                // let scores = new_branches.into_iter().map(|b| {
+                //     let score = b.score(&all_valves, &distance);
+                //     (b, score)
+                // });
+                // let min = scores.clone().min_by(|(_, a), (_, b)| a.cmp(b)).unwrap();
+                // let max = scores.clone().max_by(|(_, a), (_, b)| a.cmp(b)).unwrap();
+                // let mean = (min.1 + max.1) / 2;
+                // debug!("Min: {}, Max: {}, Mean: {}", min.1, max.1, mean);
+                //                 if max.1 == mean || min.1 == mean {
+                //     new_branches = vec![max.0.clone()];
+                //     break;
+                // }
+                // new_branches = scores
+                //     .filter_map(|(b, s)| if s <= mean { Some(b) } else { None })
+                //     .collect_vec();
                 let max = new_branches
                     .iter()
                     .max_by(|a, b| a.pressure_released.cmp(&b.pressure_released))
