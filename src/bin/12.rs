@@ -1,61 +1,7 @@
 #![feature(hash_set_entry)]
-use aoc::Solver;
+use aoc::{Graph, Solver};
 use itertools::Itertools;
-use log::{debug, info};
-use std::collections::{HashMap, HashSet, VecDeque};
-use std::fmt::Debug;
-
-struct Graph<V, E> {
-    edges: HashMap<V, HashSet<(E, V)>>,
-}
-
-impl<V, E> Graph<V, E>
-where
-    V: Eq + std::hash::Hash + Clone + Copy + Debug,
-    E: Eq + std::hash::Hash + Clone + Debug,
-{
-    fn new() -> Graph<V, E> {
-        Graph {
-            edges: HashMap::new(),
-        }
-    }
-
-    fn add_edge(&mut self, from: V, to: V, edge: E) {
-        let from_entry = self.edges.entry(from);
-        from_entry.or_default().insert((edge, to));
-    }
-
-    fn debug(&self) {
-        for (vertex, edges) in &self.edges {
-            debug!("{:?}: {:?}", vertex, edges);
-        }
-    }
-
-    fn bfs(&self, start: V, end: V) -> Option<usize> {
-        let mut visited = HashSet::new();
-        let mut queue = VecDeque::new();
-        queue.push_back((start, 0));
-
-        while let Some((vertex, depth)) = queue.pop_front() {
-            if visited.contains(&vertex) {
-                continue;
-            }
-            visited.insert(vertex);
-
-            if vertex == end {
-                return Some(depth);
-            }
-
-            if let Some(edges) = self.edges.get(&vertex) {
-                for (_, neighbor) in edges {
-                    queue.push_back((*neighbor, depth + 1));
-                }
-            }
-        }
-        info!("Never found end!");
-        None
-    }
-}
+use log::info;
 
 fn in_range(a: &char, b: &char) -> bool {
     let v = [a, b];

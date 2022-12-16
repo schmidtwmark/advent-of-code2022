@@ -2,8 +2,9 @@
 #![feature(associated_type_bounds)]
 use clap::Parser;
 use itertools::Itertools;
-use log::{error, info};
+use log::{debug, error, info};
 use simple_logger::SimpleLogger;
+use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt;
 use std::fmt::Debug;
 use std::fmt::Display;
@@ -443,5 +444,62 @@ impl<T: Display> Display for Grid<T> {
             writeln!(f)?;
         }
         writeln!(f)
+    }
+}
+
+#[derive(Default)]
+pub struct Graph<V, E> {
+    pub edges: HashMap<V, HashSet<(E, V)>>,
+}
+
+impl<V, E> Graph<V, E>
+where
+    V: Eq + std::hash::Hash + Clone + Debug,
+    E: Eq + std::hash::Hash + Clone + Debug,
+{
+    pub fn new() -> Graph<V, E> {
+        Graph {
+            edges: HashMap::new(),
+        }
+    }
+
+    pub fn add_edge(&mut self, from: V, to: V, edge: E) {
+        let from_entry = self.edges.entry(from);
+        from_entry.or_default().insert((edge, to));
+    }
+
+    pub fn get(&self, vertex: &V) -> Option<&HashSet<(E, V)>> {
+        self.edges.get(vertex)
+    }
+
+    pub fn debug(&self) {
+        for (vertex, edges) in &self.edges {
+            debug!("{:?}: {:?}", vertex, edges);
+        }
+    }
+
+    pub fn bfs(&self, start: V, end: V) -> Option<usize> {
+        let mut visited = HashSet::new();
+        let mut queue = VecDeque::new();
+        queue.push_back((start, 0));
+
+        while let Some((vertex, depth)) = queue.pop_front() {
+            if visited.contains(&vertex) {
+                continue;
+            }
+            visited.insert(vertex.clone());
+
+            if vertex == end {
+                return Some(depth);
+            }
+
+            if let Some(edges) = self.edges.get(&vertex) {
+                for (_, neighbor) in edges {
+                    queue.push_back((neighbor.clone(), depth + 1));
+                }
+            }
+        }
+        info!("Never found end!");
+        None
     }
 }

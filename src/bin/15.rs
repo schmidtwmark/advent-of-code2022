@@ -1,6 +1,5 @@
 use aoc::Solver;
 use im::HashMap;
-use itertools::Itertools;
 use log::{debug, info};
 use std::{collections::HashSet, time::Instant};
 #[macro_use]
