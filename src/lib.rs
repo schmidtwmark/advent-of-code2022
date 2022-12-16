@@ -478,6 +478,44 @@ where
         }
     }
 
+    pub fn debug_connections(&self) {
+        for (vertex, edges) in &self.edges {
+            debug!(
+                "{:?}: {:?}",
+                vertex,
+                edges.iter().map(|(_, v)| v).collect_vec()
+            );
+        }
+    }
+
+    pub fn all_vertices(&self) -> HashSet<V> {
+        self.edges.keys().cloned().collect()
+    }
+
+    pub fn all_distances(&self, start: V) -> HashMap<V, usize> {
+        let mut visited = HashSet::new();
+        let mut queue = VecDeque::new();
+        queue.push_back((start, 0));
+
+        let mut distances = HashMap::new();
+
+        while let Some((vertex, depth)) = queue.pop_front() {
+            if visited.contains(&vertex) {
+                continue;
+            }
+            visited.insert(vertex.clone());
+
+            distances.insert(vertex.clone(), depth);
+
+            if let Some(edges) = self.edges.get(&vertex) {
+                for (_, neighbor) in edges {
+                    queue.push_back((neighbor.clone(), depth + 1));
+                }
+            }
+        }
+        distances
+    }
+
     pub fn bfs(&self, start: V, end: V) -> Option<usize> {
         let mut visited = HashSet::new();
         let mut queue = VecDeque::new();
