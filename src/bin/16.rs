@@ -70,12 +70,12 @@ impl std::fmt::Display for Branch {
 }
 
 impl Branch {
-    fn new() -> Branch {
+    fn new(start: usize) -> Branch {
         Branch {
             open_valves: HashSet::new(),
             pressure_released: 0,
-            current_node: 0,
-            elephant_node: 0,
+            current_node: start,
+            elephant_node: start,
             should_continue: true,
             visited_count: HashMap::new(),
         }
@@ -247,7 +247,7 @@ impl Solver<'_, usize> for Solution {
         let (graph, name_map, flow_rates) = parse_lines(lines);
         graph.debug_connections();
 
-        let mut branches = vec![Branch::new()];
+        let mut branches = vec![Branch::new(*name_map.get_by_left("AA").unwrap())];
 
         for minute in 1..=30 {
             let mut new_branches = vec![];
@@ -300,7 +300,7 @@ impl Solver<'_, usize> for Solution {
         let (graph, name_map, flow_rates) = parse_lines(lines);
         graph.debug_connections();
 
-        let mut branches = vec![Branch::new()];
+        let mut branches = vec![Branch::new(*name_map.get_by_left("AA").unwrap())];
 
         for minute in 1..=26 {
             let mut new_branches = vec![];
