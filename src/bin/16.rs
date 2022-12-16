@@ -4,7 +4,7 @@ use aoc::{Graph, Solver};
 use bimap::BiMap;
 
 use itertools::Itertools;
-use log::{debug, info};
+use log::{debug, error, info};
 use std::{
     collections::{HashMap, HashSet},
     vec,
@@ -100,8 +100,11 @@ impl Branch {
         &mut self,
         graph: &Graph<usize, ()>,
         flow_rates: &HashMap<usize, usize>,
+        all_valves: &HashSet<usize>,
+        distances: &HashMap<usize, HashMap<usize, usize>>,
     ) -> impl Iterator<Item = Branch> {
         let mut new_branches = vec![];
+        let current_score = self.score(all_valves, distances);
         self.pressure_released += self.get_pressure(flow_rates);
         self.visited_count
             .entry(self.current_node)
@@ -111,6 +114,7 @@ impl Branch {
             .entry(self.elephant_node)
             .and_modify(|e| *e += 1)
             .or_insert(1);
+
         // Possible actions
         // 1. Sit still and never move again (vibes)
         // 2. Open self valve, elephant moves
@@ -138,14 +142,16 @@ impl Branch {
                     .map(|(_, n)| n)
                     .chain(std::iter::once(&self.elephant_node))
                 {
-                    if let Some(neighbor_visits) = self.visited_count.get(neighbor) && *neighbor_visits > graph.get(neighbor).unwrap().len() {
+                    if let Some(neighbor_visits) = self.visited_count.get(neighbor) && *neighbor_visits > graph.get(neighbor).unwrap().len() * 3{
                     // If we've already visited this node more times than it has neighbors, we probably shouldn't go back
                     continue;
                 }
                     let mut new_branch = Branch::from(self);
                     new_branch.open_valves.insert(self.current_node);
                     new_branch.elephant_node = *neighbor;
+                    // if new_branch.score(all_valves, distances) < current_score {
                     new_branches.push(new_branch);
+                    // }
                 }
             }
             // Open elephant valve, move self or stay stationary
@@ -155,14 +161,16 @@ impl Branch {
                     .map(|(_, n)| n)
                     .chain(std::iter::once(&self.current_node))
                 {
-                    if let Some(neighbor_visits) = self.visited_count.get(neighbor) && *neighbor_visits > graph.get(neighbor).unwrap().len() {
+                    if let Some(neighbor_visits) = self.visited_count.get(neighbor) && *neighbor_visits > graph.get(neighbor).unwrap().len() * 3{
                     // If we've already visited this node more times than it has neighbors, we probably shouldn't go back
                     continue;
                 }
                     let mut new_branch = Branch::from(self);
                     new_branch.current_node = *neighbor;
                     new_branch.open_valves.insert(self.elephant_node);
+                    // if new_branch.score(all_valves, distances) < current_score {
                     new_branches.push(new_branch);
+                    // }
                 }
             }
             // Open both valves, neither moves
@@ -170,16 +178,18 @@ impl Branch {
                 let mut new_branch = Branch::from(self);
                 new_branch.open_valves.insert(self.current_node);
                 new_branch.open_valves.insert(self.elephant_node);
+                // if new_branch.score(all_valves, distances) < current_score {
                 new_branches.push(new_branch);
+                // }
             }
 
             let mut new_locations = HashSet::new();
             // Move both or stay stationary
             neighbors
-                .iter().map(|(_, n)| n)
-                .cartesian_product(elephant_neighbors.iter().map(|(_, n)| n))
+                .iter().map(|(_, n)| n).chain(std::iter::once(&self.current_node))
+                .cartesian_product(elephant_neighbors.iter().map(|(_, n)| n).chain(std::iter::once(&self.elephant_node)))
                 .for_each(|(my_neighbor, elephant_neighbor)| {
-                if let Some(neighbor_visits) = self.visited_count.get(my_neighbor) && *neighbor_visits > graph.get(my_neighbor).unwrap().len() * 2{
+                if let Some(neighbor_visits) = self.visited_count.get(my_neighbor) && *neighbor_visits > graph.get(my_neighbor).unwrap().len() * 3{
                     // If we've already visited this node more times than it has neighbors, we probably shouldn't go back
                 } else if let Some(neighbor_visits) = self.visited_count.get(elephant_neighbor) && *neighbor_visits > graph.get(elephant_neighbor).unwrap().len() * 2{
                     // If we've already visited this node more times than it has neighbors, we probably shouldn't go back
@@ -188,7 +198,9 @@ impl Branch {
                         new_branch.current_node = *my_neighbor;
                         new_branch.elephant_node = *elephant_neighbor;
 
+                        // if new_branch.score(all_valves, distances) < current_score {
                         new_branches.push(new_branch);
+                        // }
                         new_locations.insert((my_neighbor, elephant_neighbor));
                 }
                 });
@@ -249,7 +261,7 @@ impl Branch {
         unvisited_valves
             .map(|v| distances[&self.current_node][v] as i64)
             .sum::<i64>()
-            - self.pressure_released as i64
+            - 10 * self.pressure_released as i64
     }
 }
 
@@ -317,63 +329,138 @@ impl Solver<'_, usize> for Solution {
             .copied()
             .filter(|v| flow_rates[v] > 0)
             .collect();
-        let distance: HashMap<usize, HashMap<usize, usize>> = graph
-            .all_vertices()
-            .map(|v| {
-                (
-                    *v,
-                    graph
-                        .all_distances(v)
-                        .into_iter()
-                        .map(|(target, distance)| (*target, flow_rates[target] * distance))
-                        .collect(),
-                )
-            })
-            .collect();
 
-        let mut branches = vec![Branch::new(*name_map.get_by_left("AA").unwrap())];
+        let start = *name_map.get_by_left("AA").unwrap();
+        let mut branches = vec![Branch::new(start)];
+        let total_minutes = 26;
 
-        for minute in 1..=26 {
+        let expected_positions = [
+            ("II", "DD", 0, vec![]),
+            ("JJ", "DD", 0, vec!["DD"]),
+            ("JJ", "EE", 20, vec!["DD", "JJ"]),
+            ("II", "FF", 61, vec!["DD", "JJ"]),
+            ("AA", "GG", 102, vec!["DD", "JJ"]),
+            ("BB", "HH", 143, vec!["DD", "JJ"]),
+            ("BB", "HH", 184, vec!["DD", "JJ", "BB", "HH"]),
+            ("CC", "GG", 260, vec!["DD", "JJ", "BB", "HH"]),
+            ("CC", "FF", 336, vec!["DD", "JJ", "BB", "HH", "CC"]),
+            ("CC", "EE", 414, vec!["DD", "JJ", "BB", "HH", "CC"]),
+            ("CC", "EE", 492, vec!["DD", "JJ", "BB", "HH", "CC", "EE"]),
+        ]
+        .iter()
+        .map(|(me, elephant, pressure, open)| {
+            let me = *name_map.get_by_left(me).unwrap_or(&0);
+            let elephant = *name_map.get_by_left(elephant).unwrap_or(&0);
+            let open: HashSet<usize> = open
+                .iter()
+                .map(|v| *name_map.get_by_left(v).unwrap_or(&0))
+                .collect();
+            (me, elephant, *pressure, open)
+        })
+        .collect_vec();
+
+        for minute in 1..=total_minutes {
+            let time_remaining = total_minutes - minute;
+            let distance: HashMap<usize, HashMap<usize, usize>> = graph
+                .all_vertices()
+                .map(|v| {
+                    (
+                        *v,
+                        graph
+                            .all_distances(v)
+                            .into_iter()
+                            .map(|(target, distance)| {
+                                (*target, (time_remaining - distance) * flow_rates[target])
+                            })
+                            .collect(),
+                    )
+                })
+                .collect();
             let mut new_branches = vec![];
+
             for branch in branches.iter_mut() {
-                new_branches.extend(branch.step2(&graph, &flow_rates));
+                new_branches.extend(branch.step2(&graph, &flow_rates, &all_valves, &distance));
             }
 
-            while new_branches.len() > 100000 {
-                // let scores = new_branches.into_iter().map(|b| {
-                //     let score = b.score(&all_valves, &distance);
-                //     (b, score)
-                // });
-                // let min = scores.clone().min_by(|(_, a), (_, b)| a.cmp(b)).unwrap();
-                // let max = scores.clone().max_by(|(_, a), (_, b)| a.cmp(b)).unwrap();
-                // let mean = (min.1 + max.1) / 2;
-                // debug!("Min: {}, Max: {}, Mean: {}", min.1, max.1, mean);
-                //                 if max.1 == mean || min.1 == mean {
-                //     new_branches = vec![max.0.clone()];
-                //     break;
-                // }
-                // new_branches = scores
-                //     .filter_map(|(b, s)| if s <= mean { Some(b) } else { None })
-                //     .collect_vec();
-                let max = new_branches
-                    .iter()
-                    .max_by(|a, b| a.pressure_released.cmp(&b.pressure_released))
-                    .unwrap();
-                let min = new_branches
-                    .iter()
-                    .min_by(|a, b| a.pressure_released.cmp(&b.pressure_released))
-                    .unwrap();
-                let mean = (max.pressure_released + min.pressure_released) / 2;
-                if max.pressure_released == mean || min.pressure_released == mean {
-                    new_branches = vec![max.clone()];
+            if start == 0 {
+                if let Some(expected) = expected_positions.get(minute - 1) {
+                    // Sample code, do some checks
+                    if let Some(actual) = new_branches.iter().find(|b| {
+                        b.current_node == expected.0
+                            && b.elephant_node == expected.1
+                            && b.pressure_released == expected.2
+                            && b.open_valves == expected.3
+                    }) {
+                        debug!(
+                        "Minute {}: Found matching branch in new branches for expected:\n{:?}\n{:?}",
+                        minute, expected, actual
+                    );
+                    } else {
+                        error!(
+                            "Minute {}: Failed to find matching branch in new branches for {:?}",
+                            minute, expected
+                        );
+                    }
                 }
+            }
 
-                new_branches = new_branches
-                    .into_iter()
-                    .filter(|b| b.pressure_released >= mean)
+            while new_branches.len() > 1000000 {
+                let scores = new_branches.into_iter().map(|b| {
+                    let score = b.score(&all_valves, &distance);
+                    (b, score)
+                });
+                let min = scores.clone().min_by(|(_, a), (_, b)| a.cmp(b)).unwrap();
+                let max = scores.clone().max_by(|(_, a), (_, b)| a.cmp(b)).unwrap();
+                let mean = (min.1 + max.1) / 2;
+                // debug!("Min: {}, Max: {}, Mean: {}", min.1, max.1, mean);
+                if max.1 == mean || min.1 == mean {
+                    new_branches = vec![max.0.clone()];
+                    break;
+                }
+                new_branches = scores
+                    .filter_map(|(b, s)| if s <= mean { Some(b) } else { None })
                     .collect_vec();
+
+                // let max = new_branches
+                //     .iter()
+                //     .max_by(|a, b| a.pressure_released.cmp(&b.pressure_released))
+                //     .unwrap();
+                // let min = new_branches
+                //     .iter()
+                //     .min_by(|a, b| a.pressure_released.cmp(&b.pressure_released))
+                //     .unwrap();
+                // let mean = (max.pressure_released + min.pressure_released) / 2;
+                // if max.pressure_released == mean || min.pressure_released == mean {
+                //     new_branches = vec![max.clone()];
+                // }
+                // new_branches = new_branches
+                //     .into_iter()
+                //     .filter(|b| b.pressure_released >= mean)
+                //     .collect_vec();
             }
             branches = new_branches;
+
+            if start == 0 {
+                if let Some(expected) = expected_positions.get(minute - 1) {
+                    // Sample code, do some checks
+                    if let Some(actual) = branches.iter().find(|b| {
+                        b.current_node == expected.0
+                            && b.elephant_node == expected.1
+                            && b.pressure_released == expected.2
+                            && b.open_valves == expected.3
+                    }) {
+                        debug!(
+                        "Minute {}: Found matching branch in branches after filter for expected:\n{:?}\n{:?}",
+                        minute, expected, actual
+                    );
+                    } else {
+                        error!(
+                            "Minute {}: Failed to find matching branch after filter in for {:?}",
+                            minute, expected
+                        );
+                    }
+                }
+            }
             let branch = branches
                 .iter()
                 .max_by(|a, b| a.pressure_released.cmp(&b.pressure_released))
