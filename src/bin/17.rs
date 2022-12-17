@@ -61,12 +61,12 @@ enum RockState {
 struct Cave {
     fallen_rocks: HashSet<Point>,
     height: usize,
-    column_offsets: [usize; 7],
+    column_offsets: [Option<usize>; 7],
     extra_height: usize,
     pushers: Vec<Push>,
     pusher_idx: usize,
     shapes: [(RockShape, Vec<Point>); 5],
-    cache: hashbrown::HashMap<(RockShape, usize, [usize; 7]), (usize, usize)>,
+    cache: hashbrown::HashMap<(RockShape, usize, [Option<usize>; 7]), (usize, usize)>,
 }
 
 impl Cave {
@@ -74,7 +74,7 @@ impl Cave {
         Self {
             fallen_rocks: HashSet::new(),
             height: 0,
-            column_offsets: [0; 7],
+            column_offsets: [None; 7],
             extra_height: 0,
             pushers,
             pusher_idx: 0,
@@ -89,7 +89,6 @@ impl Cave {
             .iter()
             .map(|(x, y)| (x + 2, y + 3 + self.height))
             .collect_vec();
-        debug!("Points start at {:?}", points);
 
         let mut rock_state = RockState::Pushing;
 
@@ -153,11 +152,19 @@ impl Cave {
                         let new_y = points
                             .iter()
                             .filter(|(x, _)| x == &col)
-                            .map(|(_, y)| self.height - y)
-                            .max()
-                            .unwrap_or(usize::MAX);
-                        let old_offset = self.column_offsets[col] + difference;
-                        self.column_offsets[col] = std::cmp::min(old_offset, new_y);
+                            .map(|(_, y)| self.height - y - 1)
+                            .min();
+
+                        let old_offset = self.column_offsets[col];
+                        self.column_offsets[col] = match (new_y, old_offset) {
+                            (Some(new_y), Some(old_offset)) => {
+                                Some(std::cmp::min(old_offset + difference, new_y))
+                            }
+                            (Some(new_y), None) => Some(new_y),
+                            (None, Some(old_offset)) => Some(old_offset + difference),
+                            (None, None) => None,
+                        }
+                        // self.column_offsets[col] = std::cmp::min(old_offset, new_y);
                     }
                     debug!(
                         "Rock {} settled {}, final points {:?}",
@@ -165,21 +172,37 @@ impl Cave {
                     );
                     self.fallen_rocks.extend(points);
 
+                    // return rock_idx + 1;
+
                     let cache_key = (*shape, self.pusher_idx, self.column_offsets);
-                    return if let Some((idx, cache_height)) = self.cache.get(&cache_key) {
-                        info!("Cache hit for {:?} at {}, {}", cache_key, idx, cache_height);
-                        let repeats = (target_rocks - idx) / (rock_idx - idx) - 1;
-                        self.extra_height += (self.height - cache_height) * repeats;
-                        rock_idx + (rock_idx - idx) * repeats
-                    } else {
-                        // info!("Cache miss for {:?} at {}", cache_key, rock_idx);
-                        self.cache.insert(cache_key, (rock_idx, self.height));
-                        rock_idx + 1
-                    };
+                    let new_rock_idx = rock_idx
+                        + if let Some((cache_idx, cache_height)) = self.cache.get(&cache_key) {
+                            let repeats =
+                                (target_rocks - cache_idx - 1) / (rock_idx - cache_idx) - 1;
+                            self.extra_height += (self.height - cache_height) * repeats;
+                            info!(
+                                "Rock {} Cache hit for {:?} => ({}, {}), repeating {} times",
+                                rock_idx, cache_key, cache_idx, cache_height, repeats
+                            );
+                            (rock_idx - cache_idx) * repeats + 1
+                        } else {
+                            info!(
+                                "Rock {} Cache miss for {:?}, inserting ({}, {})",
+                                rock_idx, cache_key, rock_idx, self.height
+                            );
+                            self.cache.insert(cache_key, (rock_idx, self.height));
+                            1
+                        };
+                    debug!(
+                        "Rock {} height is {}, total height is {}, next: {}",
+                        rock_idx,
+                        self.height,
+                        self.get_total_height(),
+                        new_rock_idx
+                    );
+                    return new_rock_idx;
                 }
             }
-
-            debug!("Points are {:?}", points);
         }
     }
 
@@ -232,6 +255,7 @@ impl Solver<'_, usize> for Solution {
             cave.cull_rocks();
             // cave.draw()
         }
+        info!("Done, rock_idx = {}", rock_idx);
 
         cave.get_total_height()
     }
@@ -252,6 +276,7 @@ impl Solver<'_, usize> for Solution {
         cave.get_total_height()
         // 1565242165215 is too high
         // 1565242165189 is too low
+        // 1565242165191 is too low
     }
 }
 
