@@ -1,10 +1,10 @@
 #![feature(mixed_integer_ops)]
 
 use aoc::Solver;
-use im::{hashset, HashSet};
 use itertools::Itertools;
-use log::debug;
+use log::{debug, info};
 use std::collections::HashMap;
+use std::collections::HashSet;
 enum Push {
     Left,
     Right,
@@ -162,18 +162,27 @@ impl Cave {
         }
 
         for y in (0..=self.height).rev() {
-            print!("|");
+            let mut line = String::with_capacity(9);
+            line.push('|');
             for x in 0..7 {
                 let tile = map.get(&(&x, &y)).copied().unwrap_or_default();
                 match tile {
-                    Tile::Air => print!("."),
-                    Tile::Rock => print!("#"),
+                    Tile::Air => line.push('.'),
+                    Tile::Rock => line.push('#'),
                 }
             }
-            print!("|");
-            println!();
+            line.push('|');
+            debug!("{}", line);
         }
-        println!("+{}+", "-".repeat(7));
+        debug!("+{}+", "-".repeat(7));
+    }
+
+    fn cull_rocks(&mut self) {
+        let offset = 100;
+        if self.fallen_rocks.len() > 1000 && self.height > 2 * offset {
+            let barrier = self.height - offset;
+            self.fallen_rocks.retain(|(_, y)| *y > barrier);
+        }
     }
 }
 
@@ -188,7 +197,8 @@ impl Solver<'_, usize> for Solution {
 
         for rock_idx in 0..rock_count {
             cave.simulate_rock(rock_idx);
-            // cave.draw();
+            cave.cull_rocks();
+            // cave.draw()
         }
 
         cave.height
@@ -197,7 +207,36 @@ impl Solver<'_, usize> for Solution {
     fn solve_part_two(&self, lines: &[&str]) -> usize {
         let line = lines[0];
         let pushers = line.chars().map(Push::from_char).collect_vec();
-        Default::default()
+        let reset_count = pushers.len() * 5;
+
+        let final_rock_count: usize = 100000;
+        // let final_rock_count: usize = 1000000000000; // one trillion
+
+        let mut heights: Vec<usize> = vec![];
+
+        let mut cave = Cave::new(pushers);
+        for rock_idx in 0..(reset_count * 7) {
+            cave.simulate_rock(rock_idx);
+            cave.cull_rocks();
+            heights.push(cave.height);
+        }
+
+        info!("Heights: {:?}", heights);
+
+        let start_offset = heights[0];
+
+        let cycle_delta = heights.last().unwrap() - heights[1];
+        let num_cycles = (final_rock_count - 1) / (reset_count * 7);
+        let skipping = num_cycles * cycle_delta;
+
+        info!(
+            "Rock count {}, start offset {}, cycle delta {}, num cycles {}, skipping {}",
+            final_rock_count, start_offset, cycle_delta, num_cycles, skipping
+        );
+
+        // Sample input with 100000 rocks = 151434
+
+        cave.height + skipping
     }
 }
 
@@ -210,7 +249,7 @@ fn main() {
     ];
 
     let part_two_problems = [
-        aoc::Input::new_sample(sample, Default::default()), // TODO: Fill in expected sample result
+        aoc::Input::new_sample(sample, 1514285714288),
         aoc::Input::new_final(input),
     ];
 
