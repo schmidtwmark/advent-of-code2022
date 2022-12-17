@@ -4,7 +4,7 @@ use aoc::{Graph, Solver};
 use bimap::BiMap;
 
 use itertools::Itertools;
-use log::{debug, error, info};
+use log::debug;
 use std::{
     collections::{HashMap, HashSet},
     vec,
@@ -51,94 +51,6 @@ fn parse_lines<'a>(
 
 #[derive(Debug, Clone)]
 struct Branch {
-    open_valves: HashSet<usize>,
-    pressure_released: usize,
-    current_node: usize,
-    elephant_node: usize,
-    should_continue: bool,
-    visited_count: HashMap<usize, usize>, // For each visited node, how many times has it been visited?
-}
-
-impl std::fmt::Display for Branch {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "(Current: {}, Elephant: {}, Pressure: {}, Open: {:?})",
-            self.current_node, self.elephant_node, self.pressure_released, self.open_valves
-        )
-    }
-}
-
-impl Branch {
-    fn new(start: usize) -> Branch {
-        Branch {
-            open_valves: HashSet::new(),
-            pressure_released: 0,
-            current_node: start,
-            elephant_node: start,
-            should_continue: true,
-            visited_count: HashMap::new(),
-        }
-    }
-
-    fn from(other: &Branch) -> Branch {
-        Branch {
-            open_valves: other.open_valves.clone(),
-            pressure_released: other.pressure_released,
-            current_node: other.current_node,
-            elephant_node: other.elephant_node,
-            should_continue: other.should_continue,
-            visited_count: other.visited_count.clone(),
-        }
-    }
-
-    fn get_pressure(&self, flow_rates: &HashMap<usize, usize>) -> usize {
-        self.open_valves.iter().map(|valve| flow_rates[valve]).sum()
-    }
-
-    fn step(
-        &mut self,
-        graph: &Graph<usize, ()>,
-        flow_rates: &HashMap<usize, usize>,
-    ) -> impl Iterator<Item = Branch> {
-        let mut new_branches = vec![];
-        self.pressure_released += self.get_pressure(flow_rates);
-        self.visited_count
-            .entry(self.current_node)
-            .and_modify(|e| *e += 1)
-            .or_insert(1);
-
-        if self.should_continue {
-            let mut new_branch = Branch::from(self);
-            new_branch.should_continue = false;
-            new_branches.push(new_branch);
-            if !self.open_valves.contains(&self.current_node) && flow_rates[&self.current_node] > 0
-            {
-                let mut new_branch = Branch::from(self);
-                new_branch.open_valves.insert(self.current_node);
-                new_branches.push(new_branch);
-            }
-
-            let neighbors = graph.get(&self.current_node).unwrap();
-            for neighbor in neighbors.keys() {
-                if let Some(neighbor_visits) = self.visited_count.get(neighbor) && *neighbor_visits > graph.get(neighbor).unwrap().len() {
-                    // If we've already visited this node more times than it has neighbors, we probably shouldn't go back
-                    continue;
-                }
-                let mut new_branch = Branch::from(self);
-                new_branch.current_node = *neighbor;
-                new_branches.push(new_branch);
-            }
-        } else {
-            new_branches.push(self.clone()); // Do nothing on this branch
-        }
-
-        new_branches.into_iter()
-    }
-}
-
-#[derive(Debug, Clone)]
-struct Branch2 {
     open_valves: HashSet<Vertex>,
     pressure_released: usize,
     my_node: Vertex,
@@ -154,9 +66,9 @@ enum Movement {
     Move(Vertex, Minute),
 }
 
-impl Branch2 {
-    fn new(start: usize) -> Branch2 {
-        Branch2 {
+impl Branch {
+    fn new(start: usize) -> Branch {
+        Branch {
             open_valves: HashSet::new(),
             pressure_released: 0,
             my_node: start,
@@ -166,8 +78,8 @@ impl Branch2 {
         }
     }
 
-    fn from(other: &Branch2) -> Branch2 {
-        Branch2 {
+    fn from(other: &Branch) -> Branch {
+        Branch {
             open_valves: other.open_valves.clone(),
             pressure_released: other.pressure_released,
             my_node: other.my_node,
@@ -211,13 +123,51 @@ impl Branch2 {
             }
         }
     }
-
     fn step(
         &mut self,
         minute: usize,
         weighted_graph: &Graph<Vertex, Distance>,
         flow_rates: &HashMap<Vertex, FlowRate>,
-    ) -> impl Iterator<Item = Branch2> + '_ {
+    ) -> impl Iterator<Item = Branch> + '_ {
+        self.pressure_released += self.get_pressure(flow_rates);
+
+        let available_valves: HashSet<Vertex> = weighted_graph
+            .all_vertices()
+            .copied()
+            .filter(|v| !self.open_valves.contains(v))
+            .collect();
+
+        let my_moves = Self::calc_movement(
+            &self.my_arrival,
+            minute,
+            self.my_node,
+            weighted_graph,
+            &available_valves,
+        );
+
+        my_moves.into_iter().map(move |my_move| {
+            let mut new_branch = Branch::from(self);
+            match my_move {
+                Movement::Continue => {}
+                Movement::OpenValve(valve) => {
+                    new_branch.open_valves.insert(valve);
+                    new_branch.my_arrival = None
+                }
+                Movement::Move(node, arrival) => {
+                    new_branch.my_node = node;
+                    new_branch.my_arrival = Some((node, arrival));
+                }
+            }
+            new_branch
+        })
+    }
+
+    fn step2(
+        &mut self,
+        minute: usize,
+        weighted_graph: &Graph<Vertex, Distance>,
+        flow_rates: &HashMap<Vertex, FlowRate>,
+    ) -> impl Iterator<Item = Branch> + '_ {
         self.pressure_released += self.get_pressure(flow_rates);
 
         let available_valves: HashSet<Vertex> = weighted_graph
@@ -245,7 +195,7 @@ impl Branch2 {
             .into_iter()
             .cartesian_product(elephant_moves.into_iter())
             .map(move |(my_move, elephant_move)| {
-                let mut new_branch = Branch2::from(self);
+                let mut new_branch = Branch::from(self);
                 match my_move {
                     Movement::Continue => {}
                     Movement::OpenValve(valve) => {
@@ -281,17 +231,43 @@ struct Solution {}
 impl Solver<'_, usize> for Solution {
     fn solve_part_one(&self, lines: &[&str]) -> usize {
         let (graph, name_map, flow_rates) = parse_lines(lines);
-        graph.debug_connections();
 
-        let mut branches = vec![Branch::new(*name_map.get_by_left("AA").unwrap())];
+        let start = *name_map.get_by_left("AA").unwrap();
+        let mut weighted_graph: Graph<Vertex, Distance> = aoc::Graph::new();
+        for (vertex, rate) in flow_rates.iter() {
+            if *rate != 0 || *vertex == start {
+                let distances = graph.all_distances(vertex);
+
+                for (other, distance) in distances {
+                    if other != vertex && (flow_rates[other] != 0 || *other == start) {
+                        weighted_graph.add_edge(*vertex, *other, distance);
+                    }
+                }
+            }
+        }
+
+        // Debug print
+        for (vertex, edges) in &weighted_graph.edges {
+            debug!(
+                "{}: {:?}",
+                name_map.get_by_right(vertex).unwrap(),
+                edges
+                    .iter()
+                    .map(|(v, d)| (name_map.get_by_right(v).unwrap(), d))
+                    .collect_vec()
+            );
+        }
+
+        let mut branches = vec![Branch::new(start)];
 
         for minute in 1..=30 {
             let mut new_branches = vec![];
-            for branch in branches.iter_mut() {
-                new_branches.extend(branch.step(&graph, &flow_rates));
+            for branch in &mut branches {
+                new_branches.extend(branch.step(minute, &weighted_graph, &flow_rates));
             }
+            debug!("Minute {}: Num Branches: {}", minute, new_branches.len());
 
-            if new_branches.len() > 100000 {
+            if new_branches.len() > 500000 {
                 let max = new_branches
                     .iter()
                     .max_by(|a, b| a.pressure_released.cmp(&b.pressure_released))
@@ -311,18 +287,6 @@ impl Solver<'_, usize> for Solution {
                     .collect_vec();
             }
             branches = new_branches;
-            let branch = branches
-                .iter()
-                .max_by(|a, b| a.pressure_released.cmp(&b.pressure_released))
-                .unwrap();
-
-            // let branch = &branches[0];
-            info!(
-                "Minute {}: Num Branches: {}\nBranch: {}",
-                minute,
-                branches.len(),
-                branch
-            );
         }
 
         branches
@@ -361,12 +325,12 @@ impl Solver<'_, usize> for Solution {
             );
         }
 
-        let mut branches = vec![Branch2::new(start)];
+        let mut branches = vec![Branch::new(start)];
 
         for minute in 1..=26 {
             let mut new_branches = vec![];
             for branch in &mut branches {
-                new_branches.extend(branch.step(minute, &weighted_graph, &flow_rates));
+                new_branches.extend(branch.step2(minute, &weighted_graph, &flow_rates));
             }
             debug!("Minute {}: Num Branches: {}", minute, new_branches.len());
 
