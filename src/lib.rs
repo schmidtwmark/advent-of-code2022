@@ -449,7 +449,7 @@ impl<T: Display> Display for Grid<T> {
 
 #[derive(Default)]
 pub struct Graph<V, E> {
-    pub edges: HashMap<V, HashSet<(E, V)>>,
+    pub edges: HashMap<V, HashMap<V, E>>,
 }
 
 impl<V, E> Graph<V, E>
@@ -465,10 +465,10 @@ where
 
     pub fn add_edge(&mut self, from: V, to: V, edge: E) {
         let from_entry = self.edges.entry(from);
-        from_entry.or_default().insert((edge, to));
+        from_entry.or_default().insert(to, edge);
     }
 
-    pub fn get(&self, vertex: &V) -> Option<&HashSet<(E, V)>> {
+    pub fn get(&self, vertex: &V) -> Option<&HashMap<V, E>> {
         self.edges.get(vertex)
     }
 
@@ -508,7 +508,7 @@ where
             distances.insert(vertex, depth);
 
             if let Some(edges) = self.edges.get(vertex) {
-                for (_, neighbor) in edges {
+                for (neighbor, _) in edges {
                     queue.push_back((neighbor, depth + 1));
                 }
             }
@@ -532,7 +532,7 @@ where
             }
 
             if let Some(edges) = self.edges.get(&vertex) {
-                for (_, neighbor) in edges {
+                for (neighbor, _) in edges {
                     queue.push_back((neighbor.clone(), depth + 1));
                 }
             }
