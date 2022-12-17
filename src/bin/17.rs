@@ -61,9 +61,11 @@ enum RockState {
 struct Cave {
     fallen_rocks: HashSet<Point>,
     height: usize,
+    column_heights: [usize; 7],
     pushers: Vec<Push>,
     pusher_idx: usize,
     shapes: [(RockShape, Vec<Point>); 5],
+    cache: HashMap<(RockShape, usize, [usize; 7]), (usize, usize)>,
 }
 
 impl Cave {
@@ -71,13 +73,15 @@ impl Cave {
         Self {
             fallen_rocks: HashSet::new(),
             height: 0,
+            column_heights: [0; 7],
             pushers,
             pusher_idx: 0,
             shapes: RockShape::shapes(),
+            cache: HashMap::new(),
         }
     }
 
-    fn simulate_rock(&mut self, rock_idx: usize) {
+    fn simulate_rock(&mut self, rock_idx: usize) -> usize {
         let (_shape, points) = &self.shapes[rock_idx % 5];
         let mut points = points
             .iter()
@@ -141,13 +145,23 @@ impl Cave {
                 RockState::Settled => {
                     let max_y = points.iter().map(|(_, y)| y).max().unwrap();
                     self.height = std::cmp::max(self.height, *max_y + 1);
+                    for col in 0..7 {
+                        let col_height = points
+                            .iter()
+                            .filter(|(x, _)| x == &col)
+                            .map(|(_, y)| y)
+                            .max()
+                            .unwrap_or(&0);
+                        self.column_heights[col] =
+                            std::cmp::max(self.column_heights[col], *col_height);
+                    }
                     debug!(
                         "Rock {} settled {}, final points {:?}",
                         rock_idx, self.height, points
                     );
 
                     self.fallen_rocks.extend(points);
-                    break;
+                    return rock_idx + 1;
                 }
             }
 
@@ -209,34 +223,57 @@ impl Solver<'_, usize> for Solution {
         let pushers = line.chars().map(Push::from_char).collect_vec();
         let reset_count = pushers.len() * 5;
 
-        let final_rock_count: usize = 100000;
-        // let final_rock_count: usize = 1000000000000; // one trillion
+        let final_rock_count: usize = 1000000000000; // one trillion
 
         let mut heights: Vec<usize> = vec![];
 
         let mut cave = Cave::new(pushers);
-        for rock_idx in 0..(reset_count * 7) {
-            cave.simulate_rock(rock_idx);
-            cave.cull_rocks();
-            heights.push(cave.height);
+        let mut rock_idx = 0;
+
+        while rock_idx < final_rock_count {
+            rock_idx = cave.simulate_rock(rock_idx);
         }
+        cave.height
 
-        info!("Heights: {:?}", heights);
+        // info!("Heights: {:?}", heights);
 
-        let start_offset = heights[0];
+        // let deltas = heights
+        //     .iter()
+        //     .skip(1)
+        //     .tuple_windows()
+        //     .map(|(a, b)| b - a)
+        //     .collect_vec();
+        // info!("Deltas: {:?}", deltas);
 
-        let cycle_delta = heights.last().unwrap() - heights[1];
-        let num_cycles = (final_rock_count - 1) / (reset_count * 7);
-        let skipping = num_cycles * cycle_delta;
+        // let chunked_deltas = deltas
+        //     .iter()
+        //     .chunks(7)
+        //     .into_iter()
+        //     .map(|chunk| chunk.copied().collect_vec())
+        //     .collect_vec();
+        // info!("Chunked: {:?}", chunked_deltas);
 
-        info!(
-            "Rock count {}, start offset {}, cycle delta {}, num cycles {}, skipping {}",
-            final_rock_count, start_offset, cycle_delta, num_cycles, skipping
-        );
+        // let sums = chunked_deltas
+        //     .iter()
+        //     .map(|chunk| chunk.iter().sum::<usize>())
+        //     .collect_vec();
+
+        // info!("Sums: {:?}", sums);
+        // assert!(sums.iter().all(|sum| *sum == sums[0]));
+
+        // let cycle_height = sums[0];
+        // let delta_sum = cycle_height * chunked_deltas.len();
+
+        // // Ensure that the cycle height * number of cycles is the same as
+        // // the actual height we calculated
+        // assert_eq!(delta_sum + heights[1], cave.height);
+
+        // let num_cycles = (final_rock_count - 1) / (reset_count * 7);
+        // let skipping = num_cycles * cycle_height;
 
         // Sample input with 100000 rocks = 151434
-
-        cave.height + skipping
+        //                 my guess         152860
+        //                new guess         157189
     }
 }
 
