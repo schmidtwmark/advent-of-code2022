@@ -10,13 +10,11 @@ use std::{
     vec,
 };
 
-fn parse_lines<'a>(
-    lines: &'a [&str],
-) -> (
-    aoc::Graph<Vertex, ()>,
-    BiMap<&'a str, Vertex>,
-    HashMap<Vertex, FlowRate>,
-) {
+type UnweightedGraph = aoc::Graph<Vertex, ()>;
+type NameMap<'a> = BiMap<&'a str, Vertex>;
+type FlowRates = HashMap<Vertex, FlowRate>;
+
+fn parse_lines<'a>(lines: &'a [&str]) -> (UnweightedGraph, NameMap<'a>, FlowRates) {
     let mut graph = aoc::Graph::new();
     let mut edges = HashMap::new();
     let mut flow_rates = HashMap::new();

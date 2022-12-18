@@ -58,15 +58,17 @@ enum RockState {
     Settled,
 }
 
+type ColumnOffsets = [Option<usize>; 7];
+
 struct Cave {
     fallen_rocks: HashSet<Point>,
     height: usize,
-    column_offsets: [Option<usize>; 7],
+    column_offsets: ColumnOffsets,
     extra_height: usize,
     pushers: Vec<Push>,
     pusher_idx: usize,
     shapes: [(RockShape, Vec<Point>); 5],
-    cache: hashbrown::HashMap<(RockShape, usize, [Option<usize>; 7]), (usize, usize)>,
+    cache: hashbrown::HashMap<(RockShape, usize, ColumnOffsets), (usize, usize)>,
 }
 
 impl Cave {
@@ -206,6 +208,7 @@ impl Cave {
         }
     }
 
+    #[allow(dead_code)]
     fn draw(&self) {
         let mut map = HashMap::new();
         for (x, y) in self.fallen_rocks.iter() {

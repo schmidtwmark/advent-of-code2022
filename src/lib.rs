@@ -508,7 +508,7 @@ where
             distances.insert(vertex, depth);
 
             if let Some(edges) = self.edges.get(vertex) {
-                for (neighbor, _) in edges {
+                for neighbor in edges.keys() {
                     queue.push_back((neighbor, depth + 1));
                 }
             }
@@ -532,7 +532,7 @@ where
             }
 
             if let Some(edges) = self.edges.get(&vertex) {
-                for (neighbor, _) in edges {
+                for neighbor in edges.keys() {
                     queue.push_back((neighbor.clone(), depth + 1));
                 }
             }
