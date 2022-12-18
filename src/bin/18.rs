@@ -1,9 +1,9 @@
-use std::{collections::VecDeque, default, str::FromStr};
+use std::{collections::VecDeque, str::FromStr};
 
 use aoc::Solver;
 use hashbrown::HashSet;
 use itertools::Itertools;
-use log::{debug, info};
+use log::debug;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Cube {
@@ -117,13 +117,6 @@ fn get_connected_components(cubes: &HashSet<Cube>) -> Vec<HashSet<Cube>> {
     components
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum CubeType {
-    Air,
-    TrappedAir,
-    Lava,
-}
-
 fn in_limit(cube: Cube, limits: &[DimensionLimit<i32>; 3]) -> bool {
     cube.x >= limits[0].min
         && cube.x <= limits[0].max
@@ -133,31 +126,6 @@ fn in_limit(cube: Cube, limits: &[DimensionLimit<i32>; 3]) -> bool {
         && cube.z <= limits[2].max
 }
 
-fn get_neighbor_towards_direction(
-    direction: (i32, i32, i32),
-    cube: Cube,
-    cubes: &HashSet<Cube>,
-    air_pockets: &HashSet<Cube>,
-    limits: &[DimensionLimit<i32>; 3],
-) -> (CubeType, Option<Cube>) {
-    let mut current = cube;
-    loop {
-        current.x += direction.0;
-        current.y += direction.1;
-        current.z += direction.2;
-        if !in_limit(current, limits) {
-            return (CubeType::Air, None);
-        }
-
-        if cubes.contains(&current) {
-            return (CubeType::Lava, Some(current));
-        }
-
-        if air_pockets.contains(&current) {
-            return (CubeType::TrappedAir, Some(current));
-        }
-    }
-}
 fn get_surrounding_air(
     lava_cubes: &HashSet<Cube>,
     limits: &[DimensionLimit<i32>; 3],
@@ -217,61 +185,9 @@ impl Solver<'_, usize> for Solution {
         let [x_dims, y_dims, z_dims] = get_dimension_limits(&cubes);
         debug!("{:?} {:?} {:?}", x_dims, y_dims, z_dims);
 
-        // let air_pockets = get_air_pockets(&cubes, &[x_dims, y_dims, z_dims]);
-        // info!("Found {} air pockets", air_pockets.len());
-
         let surrounding_air = get_surrounding_air(&cubes, &[x_dims, y_dims, z_dims]);
 
         count_surface_area_outer_only(&cubes, &surrounding_air)
-
-        // let mut air_pockets = HashSet::<Cube>::new();
-
-        // // For each position, if it is not present in the cubes, check all six directions
-        // // If all 6 touch a cube, or it touches an air pocket, it is an air pocket
-        // // If it exceeds the dimension limits, it is NOT an air pocket
-
-        // for x in x_dims.min..=x_dims.max {
-        //     for y in y_dims.min..=y_dims.max {
-        //         for z in z_dims.min..=z_dims.max {
-        //             let directions = [
-        //                 (1, 0, 0),
-        //                 (-1, 0, 0),
-        //                 (0, 1, 0),
-        //                 (0, -1, 0),
-        //                 (0, 0, 1),
-        //                 (0, 0, -1),
-        //             ];
-
-        //             let current = Cube { x, y, z };
-        //             if cubes.contains(&current) {
-        //                 continue;
-        //             }
-
-        //             let neighbors = directions
-        //                 .iter()
-        //                 .map(|direction| {
-        //                     get_neighbor_towards_direction(
-        //                         *direction,
-        //                         current,
-        //                         &cubes,
-        //                         &air_pockets,
-        //                         &[x_dims, y_dims, z_dims],
-        //                     )
-        //                 })
-        //                 .collect_vec();
-        //             if neighbors.iter().any(|(t, _)| *t == CubeType::Air) {
-        //                 continue;
-        //             }
-
-        //             air_pockets.insert(current);
-        //         }
-        //     }
-        // }
-
-        // let combined: HashSet<Cube> = cubes.union(&air_pockets).copied().collect();
-        // assert_eq!(combined.len(), cubes.len() + air_pockets.len());
-
-        // count_surface_area(&combined)
     }
 }
 
