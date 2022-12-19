@@ -1,6 +1,7 @@
 use aoc::Solver;
 use hashbrown::HashMap;
 use itertools::Itertools;
+use log::{debug, info};
 use sscanf::scanf;
 use std::str::FromStr;
 
@@ -26,14 +27,9 @@ impl FromStr for Resource {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-struct BlueprintElement {
-    costs: Vec<(Resource, usize)>,
-}
-
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct Blueprint {
-    elements: HashMap<Resource, BlueprintElement>,
+    elements: HashMap<Resource, ResourceCounts>,
     id: usize,
 }
 
@@ -47,15 +43,14 @@ impl FromStr for Blueprint {
             let (resource_str, costs_str) = element.split_once(" costs ").unwrap();
             let resource_type =
                 Resource::from_str(scanf!(resource_str, "Each {} robot", str).unwrap()).unwrap();
-            let costs = costs_str
-                .split(" and ")
-                .map(|cost| {
-                    let (count, resource) = scanf!(cost, "{} {}", usize, str).unwrap();
-                    let resource = Resource::from_str(resource).unwrap();
-                    (resource, count)
-                })
-                .collect_vec();
-            (resource_type, BlueprintElement { costs })
+            let costs = costs_str.split(" and ").map(|cost| {
+                let cost = cost.trim_end_matches('.');
+                let (count, resource) = scanf!(cost, "{} {}", usize, str).unwrap();
+                let resource = Resource::from_str(resource).unwrap();
+                (resource, count)
+            });
+            let costs = ResourceCounts::from(costs);
+            (resource_type, costs)
         });
 
         Ok(Self {
@@ -67,32 +62,121 @@ impl FromStr for Blueprint {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 struct Branch {
-    minute: usize,
-    resource_counts: [usize; 4],
-    robot_counts: [usize; 4],
+    resource_counts: ResourceCounts,
+    robot_counts: ResourceCounts,
     robot_in_production: Option<Resource>,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+struct ResourceCounts {
+    resources: [usize; 4],
+}
+
+impl ResourceCounts {
+    fn new() -> Self {
+        Self { resources: [0; 4] }
+    }
+
+    fn new_robots() -> Self {
+        Self {
+            resources: [1, 0, 0, 0],
+        }
+    }
+
+    fn from(iterator: impl Iterator<Item = (Resource, usize)>) -> Self {
+        let mut resources = [0; 4];
+        for (resource, count) in iterator {
+            resources[resource as usize] = count;
+        }
+        Self { resources }
+    }
+
+    fn _add_resource(&mut self, resource: Resource, count: usize) {
+        self.resources[resource as usize] += count;
+    }
+
+    fn get_resource(&self, resource: Resource) -> usize {
+        self.resources[resource as usize]
+    }
+
+    fn add(&mut self, other: &Self) {
+        for (resource, count) in other.resources.iter().enumerate() {
+            self.resources[resource] += count;
+        }
+    }
+
+    fn less_than_equal(&self, other: &Self) -> bool {
+        self.resources
+            .iter()
+            .zip(other.resources.iter())
+            .all(|(a, b)| a <= b)
+    }
+
+    fn subtract(&mut self, other: &Self) {
+        for (resource, count) in other.resources.iter().enumerate() {
+            self.resources[resource] -= count;
+        }
+    }
 }
 
 impl Branch {
     fn new() -> Self {
         Self {
-            minute: 1,
-            resource_counts: [0; 4],
-            robot_counts: [0; 4],
+            resource_counts: ResourceCounts::new(),
+            robot_counts: ResourceCounts::new_robots(),
             robot_in_production: None,
         }
+    }
+
+    fn simulate(&mut self, blueprint: &Blueprint) -> impl Iterator<Item = Self> {
+        let mut new_branches = vec![];
+
+        self.resource_counts.add(&self.robot_counts);
+
+        for (robot, costs) in blueprint.elements.iter() {
+            if costs.less_than_equal(&self.resource_counts) {
+                let mut new_branch = *self;
+                new_branch.robot_in_production = Some(*robot);
+                new_branch.resource_counts.subtract(costs);
+                new_branches.push(new_branch);
+            }
+        }
+
+        if new_branches.is_empty() {
+            // Do nothing except gain resources
+            new_branches.push(*self);
+        }
+
+        new_branches.into_iter()
     }
 }
 
 impl Blueprint {
-    fn simulate(&self, minutes: usize) {
+    fn simulate(&self, minutes: usize) -> usize {
         let mut minute = 1;
 
         let mut branches = vec![Branch::new()];
 
-        while minute < 24 {
+        while minute < minutes {
+            branches = branches
+                .into_iter()
+                .flat_map(|mut branch| branch.simulate(self))
+                .collect_vec();
+
             minute += 1;
         }
+
+        let best_branch = branches
+            .into_iter()
+            .max_by_key(|b| b.resource_counts.get_resource(Resource::Geode))
+            .unwrap();
+
+        info!(
+            "For blueprint #{}, the best branch is {:?}",
+            self.id, best_branch
+        );
+
+        best_branch.resource_counts.get_resource(Resource::Geode)
     }
 }
 
@@ -104,7 +188,11 @@ impl Solver<'_, usize> for Solution {
             .map(|line| Blueprint::from_str(line).unwrap())
             .collect_vec();
 
-        Default::default()
+        blueprints
+            .iter()
+            .map(|blueprint| blueprint.simulate(24))
+            .max()
+            .unwrap()
     }
 
     fn solve_part_two(&self, lines: &[&str]) -> usize {
