@@ -246,7 +246,19 @@ impl Solver<'_, usize> for Solution {
     }
 
     fn solve_part_two(&self, lines: &[&str]) -> usize {
-        Default::default()
+        let blueprints = lines
+            .iter()
+            .map(|line| Blueprint::from_str(line).unwrap())
+            .collect_vec();
+
+        let blueprints = blueprints.into_iter().take(3).collect_vec();
+
+        const MINUTES: usize = 32;
+
+        blueprints
+            .iter()
+            .map(|blueprint| blueprint.simulate(MINUTES) as usize)
+            .product()
     }
 }
 
