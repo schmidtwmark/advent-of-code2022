@@ -202,28 +202,12 @@ impl Branch {
     }
 }
 
-fn get_best_branch<'a>(
-    resource_values: &[u32; 4],
-    minutes_left: usize,
-    iterator: impl Iterator<Item = &'a Branch>,
-) -> &'a Branch {
-    iterator
-        .max_by_key(|b| score_branch(resource_values, b, minutes_left))
-        .unwrap()
-}
-
-fn get_most_geodes<'a>(iterator: impl Iterator<Item = &'a Branch>) -> &'a Branch {
-    iterator
-        .max_by_key(|b| b.robot_counts.get_resource(Resource::Geode))
-        .unwrap()
-}
-
 impl Blueprint {
     fn simulate(&self, minutes: usize) -> u8 {
         let mut minute = 1;
 
         let resource_values = self.get_values();
-        info!("Blueprint {} has values {:?}", self.id, resource_values);
+        debug!("Blueprint {} has values {:?}", self.id, resource_values);
 
         let mut branches = HashSet::new();
         branches.insert(Branch::new());
@@ -239,24 +223,12 @@ impl Blueprint {
                 );
             }
 
-            while new_branches.len() > 500000 {
+            while new_branches.len() > 100000 {
                 let before_filter = new_branches.len();
                 debug!(
                     "Minute {}: Branch overflow! {} branches",
                     minute, before_filter
                 );
-
-                // let best_branch = get_most_geodes(new_branches.iter());
-                // let best_geodes = best_branch.resource_counts.get_resource(Resource::Geode);
-                // debug!(
-                //     "Minute {}: Best branch {} has {} geodes",
-                //     minute, best_branch, best_geodes
-                // );
-                // new_branches = new_branches
-                //     .drain_filter(|b| {
-                //         b.resource_counts.get_resource(Resource::Geode) >= best_geodes
-                //     })
-                //     .collect();
 
                 let (best_branch, best_score) =
                     new_branches.iter().max_by_key(|(_, s)| *s).unwrap();
@@ -271,24 +243,14 @@ impl Blueprint {
 
                 let mean = (best_score + worst_score) / 2;
 
-                new_branches = new_branches.drain_filter(|(b, s)| *s >= mean).collect();
+                new_branches = new_branches.drain_filter(|(_b, s)| *s >= mean).collect();
                 if new_branches.len() == before_filter {
                     break;
-                    // debug!(
-                    //     "Minute {}: Filter did nothing, keeping best branch {}",
-                    //     minute, best_branch
-                    // );
-
-                    // new_branches = {
-                    //     let mut t = HashSet::new();
-                    //     t.insert(best_branch);
-                    //     t
-                    // };
                 }
             }
 
             branches = new_branches.iter().map(|(b, _)| *b).collect();
-            info!("Minute {}: {} branches", minute, branches.len());
+            debug!("Minute {}: {} branches", minute, branches.len());
 
             minute += 1;
         }
@@ -298,7 +260,7 @@ impl Blueprint {
             .max_by_key(|b| b.resource_counts.get_resource(Resource::Geode))
             .unwrap();
 
-        info!(
+        debug!(
             "For blueprint #{}, the best branch has {} geodes. It is {}",
             self.id,
             best_branch.resource_counts.get_resource(Resource::Geode),
