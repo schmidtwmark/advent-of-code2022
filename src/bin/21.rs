@@ -44,7 +44,7 @@ fn parse_lines(lines: &[&str]) -> MonkeyMap {
         let monkey = if let Ok(constant) = rhs.parse::<i128>() {
             Monkey::Constant(constant)
         } else {
-            let (lhs, op, rhs) = rhs.split(" ").collect_tuple().unwrap();
+            let (lhs, op, rhs) = rhs.split(' ').collect_tuple().unwrap();
             let op = match op {
                 "+" => Operator::Add,
                 "*" => Operator::Multiply,
@@ -125,18 +125,6 @@ impl Expression {
         }
     }
 
-    fn multiply(&self, factor: i128) -> Expression {
-        match self {
-            Expression::Constant(c) => Expression::Constant(c * factor),
-            Expression::Variable(v, f) => Expression::Variable(v.clone(), f * factor),
-            Expression::Operation(op, lhs, rhs) => Expression::Operation(
-                *op,
-                Box::new(lhs.multiply(factor)),
-                Box::new(rhs.multiply(factor)),
-            ),
-        }
-    }
-
     fn simplify(&self) -> Expression {
         match self {
             Expression::Constant(c) => Expression::Constant(*c),
@@ -155,8 +143,6 @@ impl Expression {
                     (Operator::Subtract, _, Expression::Constant(0)) => lhs,
                     (Operator::Divide, _, Expression::Constant(1)) => lhs,
 
-                    // (Operator::Multiply, Expression::Constant(c), _) => rhs.multiply(*c).simplify(),
-                    // (Operator::Multiply, _, Expression::Constant(c)) => lhs.multiply(*c).simplify(),
                     (_, Expression::Constant(_), Expression::Constant(_)) => {
                         Expression::Constant(self.evaluate(0))
                     }
@@ -165,6 +151,29 @@ impl Expression {
             }
         }
     }
+}
+
+fn solve(left_expr: &Expression, right_expr: &Expression) -> Option<i128> {
+    let (mut left_bound, mut right_bound) = (-10000000000000, 10000000000000);
+    while left_bound + 1 < right_bound {
+        let i = (left_bound + right_bound) / 2;
+        let left = left_expr.evaluate(i);
+        let right = right_expr.evaluate(i);
+        let ordering = left.cmp(&right);
+        debug!("x = {} => ({} {:?} {})", i, left, ordering, right);
+        match ordering {
+            Ordering::Less => {
+                right_bound = i;
+            }
+            Ordering::Equal => {
+                return Some(i);
+            }
+            Ordering::Greater => {
+                left_bound = i;
+            }
+        }
+    }
+    None
 }
 
 struct Solution {}
@@ -212,47 +221,13 @@ impl Solver<'_, i128> for Solution {
         info!("Right: {}", right_expression);
         info!("Right: {}", right_simplified);
 
-        let (left_limit, right_limit) = (-10000000000000, 10000000000000);
+        if let Some(solution) = solve(&left_simplified, &right_simplified) {
+            return solution;
+        }
+        if let Some(solution) = solve(&right_simplified, &left_simplified) {
+            return solution;
+        }
 
-        let (mut left_bound, mut right_bound) = (left_limit, right_limit);
-        while left_bound + 1 < right_bound {
-            let i = (left_bound + right_bound) / 2;
-            let left = left_simplified.evaluate(i);
-            let right = right_simplified.evaluate(i);
-            let ordering = left.cmp(&right);
-            debug!("x = {} => ({} {:?} {})", i, left, ordering, right);
-            match ordering {
-                Ordering::Less => {
-                    left_bound = i;
-                }
-                Ordering::Equal => {
-                    return i;
-                }
-                Ordering::Greater => {
-                    right_bound = i;
-                }
-            }
-        }
-        info!("Failed to find a solution, trying reverse");
-        let (mut left_bound, mut right_bound) = (left_limit, right_limit);
-        while left_bound + 1 < right_bound {
-            let i = (left_bound + right_bound) / 2;
-            let left = left_simplified.evaluate(i);
-            let right = right_simplified.evaluate(i);
-            let ordering = left.cmp(&right);
-            debug!("x = {} => ({} {:?} {})", i, left, ordering, right);
-            match ordering {
-                Ordering::Less => {
-                    right_bound = i;
-                }
-                Ordering::Equal => {
-                    return i;
-                }
-                Ordering::Greater => {
-                    left_bound = i;
-                }
-            }
-        }
         error!("Failed to find a solution");
         Default::default()
     }
