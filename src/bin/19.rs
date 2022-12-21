@@ -1,7 +1,7 @@
 use aoc::Solver;
 use hashbrown::{HashMap, HashSet};
 use itertools::Itertools;
-use log::{debug, info};
+use log::debug;
 use sscanf::scanf;
 use std::{fmt::Display, str::FromStr};
 

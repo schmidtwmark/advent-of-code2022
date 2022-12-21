@@ -1,12 +1,8 @@
-use std::borrow::Borrow;
 use std::fmt::{Debug, Display};
 
 use aoc::Solver;
-use hashbrown::HashMap;
 use itertools::Itertools;
 use log::debug;
-use std::cell::RefCell;
-use std::rc::Rc;
 
 #[derive(Debug, Clone)]
 struct ListNode<T>
@@ -34,15 +30,6 @@ fn get_nth(root: *mut ListNode<i64>, n: i64) -> *mut ListNode<i64> {
     for _ in 0..n {
         unsafe {
             node = (*node).next.unwrap();
-        }
-    }
-    node
-}
-fn get_nth_rev(root: *mut ListNode<i64>, n: i64) -> *mut ListNode<i64> {
-    let mut node = root;
-    for _ in 0..n {
-        unsafe {
-            node = (*node).prev.unwrap();
         }
     }
     node
@@ -145,7 +132,6 @@ impl Solver<'_, i64> for Solution {
         }
 
         let root = root.unwrap();
-        let last = last.unwrap();
 
         debug!("Before mixing: {:?}", to_vec(root, count));
 

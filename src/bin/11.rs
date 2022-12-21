@@ -2,8 +2,7 @@
 use aoc::Solver;
 use itertools::Itertools;
 use log::debug;
-#[macro_use]
-extern crate scan_fmt;
+use sscanf::scanf;
 
 type Item = u128;
 
@@ -16,7 +15,7 @@ enum Operation {
 impl Operation {
     fn new(line: &str) -> Operation {
         let (operator, operand) =
-            scan_fmt!(line.trim(), "Operation: new = old {} {}", String, String).unwrap();
+            scanf!(line.trim(), "Operation: new = old {} {}", String, String).unwrap();
         match (&*operator, &*operand) {
             ("+", _) => Operation::Add(operand.parse().unwrap()),
             ("*", "old") => Operation::Square,
@@ -37,14 +36,14 @@ impl Test {
         let true_monkey_line = lines[1];
         let false_monkey_line = lines[2];
         Test {
-            divisor: scan_fmt!(divisor_line.trim(), "Test: divisible by {}", u128).unwrap(),
-            true_monkey: scan_fmt!(
+            divisor: scanf!(divisor_line.trim(), "Test: divisible by {}", u128).unwrap(),
+            true_monkey: scanf!(
                 true_monkey_line.trim(),
                 "If true: throw to monkey {}",
                 usize
             )
             .unwrap(),
-            false_monkey: scan_fmt!(
+            false_monkey: scanf!(
                 false_monkey_line.trim(),
                 "If false: throw to monkey {}",
                 usize
