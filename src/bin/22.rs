@@ -332,7 +332,10 @@ fn wrap_around_cube(
         }
     }
 
-    todo!()
+    panic!(
+        "Unexpected direction {} for coordinate ({}, {})",
+        direction, x, y
+    );
 }
 
 struct Solution {}
@@ -425,10 +428,10 @@ impl Solver<'_, usize> for Solution {
         for command in commands {
             match command {
                 Command::Clockwise => {
-                    current_dir.rotate(true);
+                    current_dir = current_dir.rotate(true);
                 }
                 Command::Counterclockwise => {
-                    current_dir.rotate(false);
+                    current_dir = current_dir.rotate(false);
                 }
                 Command::Move(n) => {
                     for _ in 0..n {
@@ -442,8 +445,6 @@ impl Solver<'_, usize> for Solution {
                             && next_row >= 0
                             && next_row < grid.height as isize
                         {
-                            wrap_around_cube(face_length, (next_col, next_row), current_dir)
-                        } else {
                             let (next_col, next_row) = (next_col as usize, next_row as usize);
                             let next_tile = grid.at((next_col, next_row));
                             match next_tile {
@@ -465,6 +466,8 @@ impl Solver<'_, usize> for Solution {
                                 }
                                 Tile::Player(_) => panic!("Unexpected player tile"),
                             }
+                        } else {
+                            wrap_around_cube(face_length, (next_col, next_row), current_dir)
                         }
                     }
                 }
