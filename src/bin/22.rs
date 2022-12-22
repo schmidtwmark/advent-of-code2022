@@ -181,19 +181,34 @@ impl Solver<'_, usize> for Solution {
                             ((current_row as isize + y).rem_euclid(grid.height as isize)) as usize;
 
                         // Wrap around if out of bounds or tile is empty
-                        (current_col, current_row) = match grid.at((next_col, next_row)) {
+                        let next_tile = grid.at((next_col, next_row));
+                        (current_col, current_row) = match next_tile {
                             Tile::Open => (next_col, next_row),
                             Tile::Wall => (current_col, current_row),
                             Tile::Empty => {
-                                while *grid.at((next_col, next_row)) == Tile::Empty {
+                                let mut last_valid_position = (current_col, current_row);
+                                loop {
                                     next_col = ((next_col as isize + x)
                                         .rem_euclid(grid.width as isize))
                                         as usize;
                                     next_row = ((next_row as isize + y)
                                         .rem_euclid(grid.height as isize))
                                         as usize;
+                                    let next_tile = grid.at((next_col, next_row));
+                                    match next_tile {
+                                        Tile::Open => {
+                                            last_valid_position = (next_col, next_row);
+                                            break;
+                                        }
+                                        Tile::Wall => {
+                                            break;
+                                        }
+                                        Tile::Empty => (),
+                                        Tile::Player(_) => panic!("Unexpected player tile"),
+                                    }
                                 }
-                                (next_col, next_row)
+
+                                last_valid_position
                             }
                             Tile::Player(_) => panic!("Unexpected player tile"),
                         };
@@ -226,9 +241,11 @@ impl Solver<'_, usize> for Solution {
 
 fn main() {
     let sample = include_str!("../../samples/22.txt");
+    let sample_2 = include_str!("../../samples/22_1.txt");
     let input = include_str!("../../inputs/22.txt");
     let part_one_problems = [
         aoc::Input::new_sample(sample, 6032),
+        aoc::Input::new_sample(sample_2, 1038),
         aoc::Input::new_final(input), // 39208 is too low
     ];
 
