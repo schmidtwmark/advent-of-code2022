@@ -243,7 +243,15 @@ pub struct Grid<T> {
     pub height: usize,
 }
 
-impl<T> Grid<T> {
+impl<T: Default + Clone> Grid<T> {
+    pub fn new_empty(width: usize, height: usize) -> Grid<T> {
+        Grid {
+            state: vec![T::default(); width * height],
+            width,
+            height,
+        }
+    }
+
     pub fn new(state: Vec<T>, width: usize, height: usize) -> Grid<T> {
         Grid {
             state,
@@ -406,7 +414,7 @@ impl<T> Grid<T> {
             .collect_vec()
     }
 
-    pub fn _to_2d(&self) -> Vec<Vec<&T>> {
+    pub fn to_2d(&self) -> Vec<Vec<&T>> {
         self.state
             .chunks(self.width)
             .map(|chunk| chunk.iter().collect_vec())
@@ -417,6 +425,18 @@ impl<T> Grid<T> {
         (0..self.height)
             .cartesian_product(0..self.width)
             .map(|(y, x)| (x, y))
+    }
+
+    pub fn row(&self, y: usize) -> impl Iterator<Item = &T> {
+        self.state[y * self.width..(y + 1) * self.width].iter()
+    }
+
+    pub fn col(&self, x: usize) -> impl Iterator<Item = &T> {
+        self.state
+            .iter()
+            .skip(x)
+            .step_by(self.width)
+            .take(self.height)
     }
 
     pub fn from_lines(lines: &[&str], transformer: &dyn Fn(char) -> T) -> Grid<T> {
