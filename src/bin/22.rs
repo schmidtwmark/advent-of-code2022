@@ -468,7 +468,8 @@ impl Solver<'_, usize> for Solution {
                             }
                         } else {
                             wrap_around_cube(face_length, (next_col, next_row), current_dir)
-                        }
+                        };
+                        draw(&mut grid, current_col, current_row, current_dir);
                     }
                 }
             }
@@ -476,7 +477,6 @@ impl Solver<'_, usize> for Solution {
                 "({}, {}) with direction {:?} after command {command:?}",
                 current_col, current_row, current_dir
             );
-            draw(&mut grid, current_col, current_row, current_dir);
         }
 
         info!(
@@ -503,6 +503,7 @@ fn main() {
 
     let part_two_problems = [
         aoc::Input::new_sample(sample, 5031),
+        aoc::Input::new_sample(sample_2, 12056),
         aoc::Input::new_final(input),
     ];
 
