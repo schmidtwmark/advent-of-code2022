@@ -284,6 +284,27 @@ impl<T: Default + Clone> Grid<T> {
         &self.state[self.pos_to_index(pos)]
     }
 
+    pub fn get(&self, pos: (usize, usize)) -> Option<&T> {
+        if pos.0 < self.width && pos.1 < self.height {
+            Some(&self.state[self.pos_to_index(pos)])
+        } else {
+            None
+        }
+    }
+
+    pub fn get_subgrid(&self, pos: (usize, usize), width: usize, height: usize) -> Grid<T> {
+        let mut subgrid = Grid::new_empty(width, height);
+        for y in 0..height {
+            for x in 0..width {
+                let pos = (pos.0 + x, pos.1 + y);
+                if let Some(value) = self.get(pos) {
+                    subgrid.state[y * width + x] = value.clone();
+                }
+            }
+        }
+        subgrid
+    }
+
     pub fn mut_at(&mut self, pos: (usize, usize)) -> &mut T {
         let index = self.pos_to_index(pos);
         &mut self.state[index]
