@@ -116,14 +116,13 @@ impl State {
         branches.insert(self.player);
 
         loop {
-            debug!("Minute: {}, {} branches", minute, branches.len());
+            // debug!("Minute: {}, {} branches", minute, branches.len());
             let mut new_branches = HashSet::new();
             let new_blizzards = self.new_blizzards();
 
             for branch in branches.iter() {
                 if !new_blizzards.contains_key(branch) {
                     let new_branch = *branch;
-                    debug!("Minute: {}, Branch: {:?}, Stay put", minute, branch);
                     new_branches.insert(new_branch); // Stay put
                 }
 
@@ -136,7 +135,7 @@ impl State {
                     };
 
                     if new_branch == self.goal {
-                        debug!("Found goal at minute {}", minute);
+                        self.blizzards = new_blizzards;
                         return minute;
                     }
 
@@ -146,10 +145,6 @@ impl State {
                             continue;
                         }
 
-                        debug!(
-                            "Minute: {}, Branch: {:?}, Move {:?} to {:?}",
-                            minute, branch, direction, new_branch
-                        );
                         new_branches.insert(new_branch);
                     }
                 }
@@ -159,8 +154,6 @@ impl State {
             branches = new_branches;
             minute += 1;
         }
-
-        minute
     }
 }
 
@@ -182,7 +175,25 @@ impl Solver<'_, usize> for Solution {
     }
 
     fn solve_part_two(&self, lines: &[&str]) -> usize {
-        Default::default()
+        let mut state = State::from_lines(lines);
+        let start_point = state.player;
+        let end_point = state.goal;
+
+        debug!("Initial state: {:?}", state);
+        let first_run = state.time_to_goal();
+        debug!("Took {} minutes to reach the goal", first_run);
+
+        state.player = end_point;
+        state.goal = start_point;
+        let second_run = state.time_to_goal();
+        debug!("Took {} minutes to reach the start", second_run);
+
+        state.player = start_point;
+        state.goal = end_point;
+        let third_run = state.time_to_goal();
+        debug!("Took {} minutes to reach the goal", third_run);
+
+        first_run + second_run + third_run
     }
 }
 
@@ -197,8 +208,8 @@ fn main() {
     ];
 
     let part_two_problems = [
-        aoc::Input::new_sample(sample, Default::default()), // TODO: Fill in expected sample result
-        aoc::Input::new_final(input),
+        aoc::Input::new_sample(sample, 54),
+        aoc::Input::new_final(input), // 844 is too low // 846 is too low
     ];
 
     Solution {}.run(&part_one_problems, &part_two_problems);
