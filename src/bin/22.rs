@@ -89,28 +89,41 @@ impl Direction {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 enum Tile {
-    #[default]
     Empty,
     Wall,
-    Open,
-    Player(Direction),
+    Open(Option<Direction>),
+}
+
+impl Default for Tile {
+    fn default() -> Self {
+        Tile::Empty
+    }
 }
 
 impl Display for Tile {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Tile::Empty => write!(f, "⬛️"),
-            Tile::Wall => write!(f, "🟥"),
-            Tile::Open => write!(f, "⬜️"),
-            Tile::Player(dir) => match dir {
-                Direction::Up => write!(f, "️🟦"),
-                Direction::Down => write!(f, "🟩"),
-                Direction::Left => write!(f, "🟨"),
-                Direction::Right => write!(f, "🟪"),
-            },
-        }
+        write!(
+            f,
+            "{}",
+            match self {
+                Tile::Empty => "⬛️",
+                Tile::Wall => "🟥",
+                Tile::Open(dir) => {
+                    if let Some(dir) = dir {
+                        match dir {
+                            Direction::Up => "️🟦",
+                            Direction::Down => "🟩",
+                            Direction::Left => "🟨",
+                            Direction::Right => "🟪",
+                        }
+                    } else {
+                        "⬜️"
+                    }
+                }
+            }
+        )
     }
 }
 
@@ -135,7 +148,7 @@ fn parse(lines: &[&str]) -> (Grid<Tile>, Vec<Command>) {
         for (col, c) in line.chars().enumerate() {
             match c {
                 '#' => *grid.mut_at((col, row)) = Tile::Wall,
-                '.' => *grid.mut_at((col, row)) = Tile::Open,
+                '.' => *grid.mut_at((col, row)) = Tile::Open(None),
                 ' ' => (), // Already set to empty
                 _ => panic!("Unexpected character: {}", c),
             }
@@ -178,22 +191,13 @@ fn parse(lines: &[&str]) -> (Grid<Tile>, Vec<Command>) {
     (grid, commands)
 }
 
-fn draw(
-    grid: &mut Grid<Tile>,
-    current_col: usize,
-    current_row: usize,
-    current_direction: Direction,
-) {
-    *grid.mut_at((current_col, current_row)) = Tile::Player(current_direction);
-    debug!("{grid}");
-    *grid.mut_at((current_col, current_row)) = Tile::Open;
-}
 fn wrap_around_cube(
+    is_sample: bool,
     cube_width: usize,
     (x, y): (isize, isize),
     direction: Direction,
 ) -> (usize, usize, Direction) {
-    if cube_width == 4 {
+    if is_sample {
         wrap_around_cube_sample(4, (x, y), direction)
     } else {
         let input = (x, y, direction);
@@ -260,7 +264,7 @@ fn wrap_around_cube_final(
 
     if x == cube_width * 3 && y >= 0 && y < cube_width {
         assert_eq!(direction, Direction::Right);
-        // Right edge of right, end up on right edge of back
+        // Right edge of right, end up on right edge of bottom
         return (
             (cube_width * 2 - 1) as usize,
             (cube_width * 3 - face_y - 1) as usize,
@@ -268,23 +272,25 @@ fn wrap_around_cube_final(
         );
     }
 
-    if x >= cube_width && x < cube_width * 2 && y >= cube_width * 3 {
+    if x >= cube_width && x < cube_width * 2 && y >= cube_width * 3 && y < cube_width * 4 {
         return match direction {
+            // Right side of back to bottom side of bottom
             Direction::Right => (
                 (cube_width + face_y) as usize,
                 (cube_width * 3 - 1) as usize,
                 Direction::Up,
             ),
+            // Bottom side of bottom to bottom side of back
             Direction::Down => (
                 (cube_width - 1) as usize,
                 (cube_width * 3 + face_x) as usize,
-                Direction::Up,
+                Direction::Left,
             ),
             _ => panic!("Unexpected wrap around {}: ({}, {})", direction, x, y),
         };
     }
 
-    if y >= cube_width && y < cube_width * 2 && x >= cube_width * 2 {
+    if y >= cube_width && y < cube_width * 2 && x >= cube_width * 2 && x < cube_width * 3 {
         return match direction {
             Direction::Down => (
                 // Bottom side of right, to right side of front
@@ -306,7 +312,7 @@ fn wrap_around_cube_final(
         return match direction {
             Direction::Up => (
                 // left cube up to front cube left side
-                (cube_width - 1) as usize,
+                (cube_width) as usize,
                 (cube_width + face_x) as usize,
                 Direction::Right,
             ),
@@ -331,7 +337,7 @@ fn wrap_around_cube_final(
         assert_eq!(direction, Direction::Right);
         return (
             (cube_width * 3 - 1) as usize,
-            (cube_width * 3 - face_y - 1) as usize,
+            (cube_width - face_y - 1) as usize,
             Direction::Left,
         );
     }
@@ -490,7 +496,7 @@ impl Solver<'_, usize> for Solution {
     fn solve_part_one(&self, lines: &[&str]) -> usize {
         let (mut grid, commands) = parse(lines);
 
-        let mut current_col = grid.row(0).position(|t| *t == Tile::Open).unwrap();
+        let mut current_col = grid.row(0).position(|t| *t == Tile::Open(None)).unwrap();
         let mut current_row = 0;
         let mut current_dir = Direction::Right;
 
@@ -511,7 +517,7 @@ impl Solver<'_, usize> for Solution {
                         // Wrap around if out of bounds or tile is empty
                         let next_tile = grid.at((next_col, next_row));
                         (current_col, current_row) = match next_tile {
-                            Tile::Open => (next_col, next_row),
+                            Tile::Open(_) => (next_col, next_row),
                             Tile::Wall => (current_col, current_row),
                             Tile::Empty => {
                                 let mut last_valid_position = (current_col, current_row);
@@ -524,7 +530,7 @@ impl Solver<'_, usize> for Solution {
                                         as usize;
                                     let next_tile = grid.at((next_col, next_row));
                                     match next_tile {
-                                        Tile::Open => {
+                                        Tile::Open(_) => {
                                             last_valid_position = (next_col, next_row);
                                             break;
                                         }
@@ -532,14 +538,13 @@ impl Solver<'_, usize> for Solution {
                                             break;
                                         }
                                         Tile::Empty => (),
-                                        Tile::Player(_) => panic!("Unexpected player tile"),
                                     }
                                 }
 
                                 last_valid_position
                             }
-                            Tile::Player(_) => panic!("Unexpected player tile"),
                         };
+                        *grid.mut_at((current_col, current_row)) = Tile::Open(Some(current_dir));
                     }
                 }
             }
@@ -549,7 +554,6 @@ impl Solver<'_, usize> for Solution {
             );
         }
 
-        draw(&mut grid, current_col, current_row, current_dir);
         info!(
             "Final position: ({}, {}) with direction {}",
             current_col, current_row, current_dir
@@ -564,13 +568,17 @@ impl Solver<'_, usize> for Solution {
     fn solve_part_two(&self, lines: &[&str]) -> usize {
         let (mut grid, commands) = parse(lines);
 
+        let is_sample = grid.width == 16 && grid.height == 12;
         let face_length = num::integer::gcd(grid.width, grid.height);
 
-        let mut current_col = grid.row(0).position(|t| *t == Tile::Open).unwrap();
+        let mut current_col = grid.row(0).position(|t| *t == Tile::Open(None)).unwrap();
         let mut current_row = 0;
         let mut current_dir = Direction::Right;
 
         debug!("Starting at ({}, {})", current_col, current_row);
+
+        *grid.mut_at((current_col, current_row)) = Tile::Open(Some(current_dir));
+        debug!("Original grid {}", grid);
 
         for command in commands {
             match command {
@@ -595,31 +603,50 @@ impl Solver<'_, usize> for Solution {
                             let (next_col, next_row) = (next_col as usize, next_row as usize);
                             let next_tile = grid.at((next_col, next_row));
                             match next_tile {
-                                Tile::Open => (next_col, next_row, current_dir),
+                                Tile::Open(_) => (next_col, next_row, current_dir),
                                 Tile::Wall => (current_col, current_row, current_dir),
                                 Tile::Empty => {
                                     // Wrap around the cube
                                     let (next_col, next_row, next_dir) = wrap_around_cube(
+                                        is_sample,
                                         face_length,
                                         (next_col as isize, next_row as isize),
                                         current_dir,
                                     );
                                     let next_tile = grid.at((next_col, next_row));
-                                    if let Tile::Open = next_tile {
+                                    debug!(
+                                        "Wrapping around cube: ({}, {}) with direction {:?} to ({}, {}) with direction {:?}",
+                                        next_col, next_row, current_dir, next_col, next_row, next_dir);
+                                    if let Tile::Open(_) = next_tile {
                                         (next_col, next_row, next_dir)
                                     } else {
                                         (current_col, current_row, current_dir)
                                     }
                                 }
-                                Tile::Player(_) => panic!("Unexpected player tile"),
                             }
                         } else {
-                            wrap_around_cube(face_length, (next_col, next_row), current_dir)
+                            let (next_col, next_row, next_dir) = wrap_around_cube(
+                                is_sample,
+                                face_length,
+                                (next_col, next_row),
+                                current_dir,
+                            );
+                            let next_tile = grid.at((next_col, next_row));
+                            debug!(
+                                        "Wrapping around cube: ({}, {}) with direction {:?} to ({}, {}) with direction {:?}",
+                                        next_col, next_row, current_dir, next_col, next_row, next_dir);
+                            if let Tile::Open(_) = next_tile {
+                                (next_col, next_row, next_dir)
+                            } else {
+                                (current_col, current_row, current_dir)
+                            }
                         };
-                        // draw(&mut grid, current_col, current_row, current_dir);
+
+                        *grid.mut_at((current_col, current_row)) = Tile::Open(Some(current_dir));
                     }
                 }
             }
+
             debug!(
                 "({}, {}) with direction {:?} after command {command:?}",
                 current_col, current_row, current_dir
@@ -652,8 +679,8 @@ fn main() {
     let part_two_problems = [
         aoc::Input::new_sample(sample, 5031),
         aoc::Input::new_sample(sample_2, 12056),
-        aoc::Input::new_sample(sample_3, 1038),
-        aoc::Input::new_final(input), // 93373 too low // 103134
+        aoc::Input::new_sample(sample_3, 1023),
+        aoc::Input::new_final(input), // 93373 too low // 103134 //189097
     ];
 
     Solution {}.run(&part_one_problems, &part_two_problems);
@@ -666,15 +693,15 @@ mod tests {
     fn test_wrap_around_top_mid() {
         // Off top mid
         assert_eq!(
-            wrap_around_cube(4, (8, -1), Direction::Up),
+            wrap_around_cube(true, 4, (8, -1), Direction::Up),
             (3, 4, Direction::Down)
         );
         assert_eq!(
-            wrap_around_cube(4, (10, -1), Direction::Up),
+            wrap_around_cube(true, 4, (10, -1), Direction::Up),
             (1, 4, Direction::Down)
         );
         assert_eq!(
-            wrap_around_cube(4, (11, -1), Direction::Up),
+            wrap_around_cube(true, 4, (11, -1), Direction::Up),
             (0, 4, Direction::Down)
         );
     }
@@ -683,15 +710,15 @@ mod tests {
     fn test_wrap_around_bottom_mid() {
         // Off bottom mid
         assert_eq!(
-            wrap_around_cube(4, (8, 12), Direction::Down),
+            wrap_around_cube(true, 4, (8, 12), Direction::Down),
             (3, 7, Direction::Up)
         );
         assert_eq!(
-            wrap_around_cube(4, (10, 12), Direction::Down),
+            wrap_around_cube(true, 4, (10, 12), Direction::Down),
             (1, 7, Direction::Up)
         );
         assert_eq!(
-            wrap_around_cube(4, (11, 12), Direction::Down),
+            wrap_around_cube(true, 4, (11, 12), Direction::Down),
             (0, 7, Direction::Up)
         );
     }
@@ -700,11 +727,11 @@ mod tests {
     fn test_wrap_around_bottom_right() {
         // Off bottom right
         assert_eq!(
-            wrap_around_cube(4, (12, 12), Direction::Down),
+            wrap_around_cube(true, 4, (12, 12), Direction::Down),
             (0, 7, Direction::Right)
         );
         assert_eq!(
-            wrap_around_cube(4, (15, 12), Direction::Down),
+            wrap_around_cube(true, 4, (15, 12), Direction::Down),
             (0, 4, Direction::Right)
         );
     }
@@ -713,15 +740,15 @@ mod tests {
     fn test_wrap_around_left() {
         // Off left
         assert_eq!(
-            wrap_around_cube(4, (-1, 4), Direction::Left),
+            wrap_around_cube(true, 4, (-1, 4), Direction::Left),
             (15, 11, Direction::Up)
         );
         assert_eq!(
-            wrap_around_cube(4, (-1, 6), Direction::Left),
+            wrap_around_cube(true, 4, (-1, 6), Direction::Left),
             (13, 11, Direction::Up)
         );
         assert_eq!(
-            wrap_around_cube(4, (-1, 7), Direction::Left),
+            wrap_around_cube(true, 4, (-1, 7), Direction::Left),
             (12, 11, Direction::Up)
         );
     }
@@ -730,15 +757,15 @@ mod tests {
     fn test_wrap_around_right() {
         // Off right
         assert_eq!(
-            wrap_around_cube(4, (16, 8), Direction::Right),
+            wrap_around_cube(true, 4, (16, 8), Direction::Right),
             (11, 3, Direction::Left)
         );
         assert_eq!(
-            wrap_around_cube(4, (16, 10), Direction::Right),
+            wrap_around_cube(true, 4, (16, 10), Direction::Right),
             (11, 1, Direction::Left)
         );
         assert_eq!(
-            wrap_around_cube(4, (16, 11), Direction::Right),
+            wrap_around_cube(true, 4, (16, 11), Direction::Right),
             (11, 0, Direction::Left)
         );
     }
@@ -746,11 +773,11 @@ mod tests {
     #[test]
     fn test_wrap_around_mid_top_right() {
         assert_eq!(
-            wrap_around_cube(4, (12, 0), Direction::Right),
+            wrap_around_cube(true, 4, (12, 0), Direction::Right),
             (15, 11, Direction::Left)
         );
         assert_eq!(
-            wrap_around_cube(4, (12, 3), Direction::Right),
+            wrap_around_cube(true, 4, (12, 3), Direction::Right),
             (15, 8, Direction::Left)
         );
     }
@@ -758,15 +785,15 @@ mod tests {
     #[test]
     fn test_wrap_around_mid_mid_right() {
         assert_eq!(
-            wrap_around_cube(4, (12, 4), Direction::Right),
+            wrap_around_cube(true, 4, (12, 4), Direction::Right),
             (15, 8, Direction::Down)
         );
         assert_eq!(
-            wrap_around_cube(4, (12, 6), Direction::Right),
+            wrap_around_cube(true, 4, (12, 6), Direction::Right),
             (13, 8, Direction::Down)
         );
         assert_eq!(
-            wrap_around_cube(4, (12, 7), Direction::Right),
+            wrap_around_cube(true, 4, (12, 7), Direction::Right),
             (12, 8, Direction::Down)
         );
     }
@@ -774,11 +801,11 @@ mod tests {
     #[test]
     fn test_wrap_around_bottom_right_up() {
         assert_eq!(
-            wrap_around_cube(4, (12, 7), Direction::Up),
+            wrap_around_cube(true, 4, (12, 7), Direction::Up),
             (11, 7, Direction::Left)
         );
         assert_eq!(
-            wrap_around_cube(4, (15, 7), Direction::Up),
+            wrap_around_cube(true, 4, (15, 7), Direction::Up),
             (11, 4, Direction::Left)
         );
     }
@@ -786,48 +813,48 @@ mod tests {
     #[test]
     fn test_wrap_around_bottom_mid_left() {
         assert_eq!(
-            wrap_around_cube(4, (7, 8), Direction::Left),
+            wrap_around_cube(true, 4, (7, 8), Direction::Left),
             (7, 7, Direction::Up)
         );
         assert_eq!(
-            wrap_around_cube(4, (7, 10), Direction::Left),
+            wrap_around_cube(true, 4, (7, 10), Direction::Left),
             (5, 7, Direction::Up)
         );
         assert_eq!(
-            wrap_around_cube(4, (7, 11), Direction::Left),
+            wrap_around_cube(true, 4, (7, 11), Direction::Left),
             (4, 7, Direction::Up)
         );
     }
     #[test]
     fn test_wrap_around_top_left() {
         assert_eq!(
-            wrap_around_cube(4, (7, 0), Direction::Left),
+            wrap_around_cube(true, 4, (7, 0), Direction::Left),
             (4, 4, Direction::Down)
         );
         assert_eq!(
-            wrap_around_cube(4, (7, 3), Direction::Left),
+            wrap_around_cube(true, 4, (7, 3), Direction::Left),
             (7, 4, Direction::Down)
         );
     }
     #[test]
     fn test_wrap_around_mid_left_up() {
         assert_eq!(
-            wrap_around_cube(4, (0, 3), Direction::Up),
+            wrap_around_cube(true, 4, (0, 3), Direction::Up),
             (11, 0, Direction::Down)
         );
         assert_eq!(
-            wrap_around_cube(4, (3, 3), Direction::Up),
+            wrap_around_cube(true, 4, (3, 3), Direction::Up),
             (8, 0, Direction::Down)
         );
     }
     #[test]
     fn test_wrap_around_mid_mid_left_up() {
         assert_eq!(
-            wrap_around_cube(4, (4, 3), Direction::Up),
+            wrap_around_cube(true, 4, (4, 3), Direction::Up),
             (8, 0, Direction::Right)
         );
         assert_eq!(
-            wrap_around_cube(4, (7, 3), Direction::Up),
+            wrap_around_cube(true, 4, (7, 3), Direction::Up),
             (8, 3, Direction::Right)
         );
     }
@@ -835,11 +862,11 @@ mod tests {
     #[test]
     fn test_wrap_around_mid_left_down() {
         assert_eq!(
-            wrap_around_cube(4, (0, 8), Direction::Down),
+            wrap_around_cube(true, 4, (0, 8), Direction::Down),
             (11, 11, Direction::Up)
         );
         assert_eq!(
-            wrap_around_cube(4, (3, 8), Direction::Down),
+            wrap_around_cube(true, 4, (3, 8), Direction::Down),
             (8, 11, Direction::Up)
         );
     }
@@ -847,11 +874,11 @@ mod tests {
     #[test]
     fn test_wrap_around_mid_mid_left_down() {
         assert_eq!(
-            wrap_around_cube(4, (4, 8), Direction::Down),
+            wrap_around_cube(true, 4, (4, 8), Direction::Down),
             (8, 11, Direction::Right)
         );
         assert_eq!(
-            wrap_around_cube(4, (7, 8), Direction::Down),
+            wrap_around_cube(true, 4, (7, 8), Direction::Down),
             (8, 8, Direction::Right)
         );
     }
