@@ -124,9 +124,6 @@ enum Command {
 fn parse(lines: &[&str]) -> (Grid<Tile>, Vec<Command>) {
     let (grid_str, commands_str) = lines.split(|s| s.is_empty()).collect_tuple().unwrap();
 
-    debug!("Grid: {:?}", grid_str);
-    debug!("Commands: {:?}", commands_str);
-
     let width = grid_str.iter().map(|s| s.len()).max().unwrap();
     let height = grid_str.len();
 
@@ -197,48 +194,157 @@ fn wrap_around_cube(
     direction: Direction,
 ) -> (usize, usize, Direction) {
     if cube_width == 4 {
-        wrap_around_cube_sample((x, y), direction)
+        wrap_around_cube_sample(4, (x, y), direction)
     } else {
-        wrap_around_cube_final((x, y), direction)
+        let input = (x, y, direction);
+        debug!("wrap_around_cube({:?})", input);
+        let output = wrap_around_cube_final(cube_width, (x, y), direction);
+        debug!("wrap_around_cube({:?}) = {:?}", input, output);
+        output
     }
 }
 
 fn wrap_around_cube_final(
+    cube_width: usize,
     (x, y): (isize, isize),
     direction: Direction,
 ) -> (usize, usize, Direction) {
-    let cube_width = 4;
+    let cube_width = cube_width as isize;
     let face_x = x % cube_width;
     let face_y = y % cube_width;
+
+    debug!(
+        "face_x = {}, face_y = {}, cube_width = {}",
+        face_x, face_y, cube_width
+    );
     if y == -1 {
         assert_eq!(direction, Direction::Up);
         // off top edge of top
-        if x < cube_width * 2 {
-            // End up on back, upside down
-            return (0, (cube_width * 4 - face_x - 1) as usize, Direction::Down);
-        } else {
+        if x >= cube_width && x < cube_width * 2 {
+            // End up on back, going right
+            return (0, (cube_width * 3 + face_x) as usize, Direction::Right);
+        } else if x >= cube_width * 2 && x < cube_width * 3 {
             // Off top edge of right, end up on back, bottom edge going up
             return (
-                (cube_width - face_x - 1) as usize,
+                (face_x) as usize,
                 (cube_width * 4 - 1) as usize,
                 Direction::Up,
             );
+        } else {
+            panic!("Unexpected x value: {}", x);
         }
     }
 
-    if y == cube_width * 4 {
+    if y == cube_width * 4 && x >= 0 && x < cube_width {
         assert_eq!(direction, Direction::Down);
-        // Bottom of back, end up on left edge of right
+        // Bottom of back, end up on top edge of right
+        return ((cube_width * 2 + face_x) as usize, 0, Direction::Down);
+    }
+
+    if x == -1 {
+        assert_eq!(direction, Direction::Left);
+        // Left edge of left, end up on left edge of top
+        if y >= cube_width * 2 && y < cube_width * 3 {
+            return (
+                cube_width as usize,
+                (cube_width - face_y - 1) as usize,
+                Direction::Right,
+            );
+        } else if y >= cube_width * 3 && y < cube_width * 4 {
+            // Left edge of back, end up on top edge of top
+            return ((cube_width + face_y) as usize, 0, Direction::Down);
+        } else {
+            panic!("Unexpected y value: {}", y);
+        }
+    }
+
+    if x == cube_width * 3 && y >= 0 && y < cube_width {
+        assert_eq!(direction, Direction::Right);
+        // Right edge of right, end up on right edge of back
+        return (
+            (cube_width * 2 - 1) as usize,
+            (cube_width * 3 - face_y - 1) as usize,
+            Direction::Left,
+        );
+    }
+
+    if x >= cube_width && x < cube_width * 2 && y >= cube_width * 3 {
+        return match direction {
+            Direction::Right => (
+                (cube_width + face_y) as usize,
+                (cube_width * 3 - 1) as usize,
+                Direction::Up,
+            ),
+            Direction::Down => (
+                (cube_width - 1) as usize,
+                (cube_width * 3 + face_x) as usize,
+                Direction::Up,
+            ),
+            _ => panic!("Unexpected wrap around {}: ({}, {})", direction, x, y),
+        };
+    }
+
+    if y >= cube_width && y < cube_width * 2 && x >= cube_width * 2 {
+        return match direction {
+            Direction::Down => (
+                // Bottom side of right, to right side of front
+                (cube_width * 2 - 1) as usize,
+                (cube_width + face_x) as usize,
+                Direction::Left,
+            ),
+            Direction::Right => (
+                // Right side of front, to bottom side of right
+                (cube_width * 2 + face_y) as usize,
+                (cube_width - 1) as usize,
+                Direction::Up,
+            ),
+            _ => panic!("Unexpected wrap around {}: ({}, {})", direction, x, y),
+        };
+    }
+
+    if x >= 0 && x < cube_width && y >= cube_width && y < cube_width * 2 {
+        return match direction {
+            Direction::Up => (
+                // left cube up to front cube left side
+                (cube_width - 1) as usize,
+                (cube_width + face_x) as usize,
+                Direction::Right,
+            ),
+            Direction::Left => (
+                // Left side of front to top side of left
+                (face_y) as usize,
+                (cube_width * 2) as usize,
+                Direction::Down,
+            ),
+            _ => panic!("Unexpected wrap around {}: ({}, {})", direction, x, y),
+        };
+    }
+
+    if x == cube_width - 1 && y >= 0 && y < cube_width {
+        // Left edge of top to right edge of left
+        assert_eq!(direction, Direction::Left);
+        return (0, (cube_width * 3 - face_y - 1) as usize, Direction::Right);
+    }
+
+    if x == cube_width * 2 && y >= cube_width * 2 && y < cube_width * 3 {
+        // Right edge of bottom to right edge of right
+        assert_eq!(direction, Direction::Right);
+        return (
+            (cube_width * 3 - 1) as usize,
+            (cube_width * 3 - face_y - 1) as usize,
+            Direction::Left,
+        );
     }
 
     panic!("Unexpected wrap around {}: ({}, {})", direction, x, y);
 }
 
 fn wrap_around_cube_sample(
+    cube_width: usize,
     (x, y): (isize, isize),
     direction: Direction,
 ) -> (usize, usize, Direction) {
-    let cube_width = 4;
+    let cube_width = cube_width as isize;
     let face_x = x % cube_width;
     let face_y = y % cube_width;
     // off top
@@ -458,7 +564,7 @@ impl Solver<'_, usize> for Solution {
     fn solve_part_two(&self, lines: &[&str]) -> usize {
         let (mut grid, commands) = parse(lines);
 
-        let face_length = grid.height / 3;
+        let face_length = num::integer::gcd(grid.width, grid.height);
 
         let mut current_col = grid.row(0).position(|t| *t == Tile::Open).unwrap();
         let mut current_row = 0;
@@ -510,7 +616,7 @@ impl Solver<'_, usize> for Solution {
                         } else {
                             wrap_around_cube(face_length, (next_col, next_row), current_dir)
                         };
-                        draw(&mut grid, current_col, current_row, current_dir);
+                        // draw(&mut grid, current_col, current_row, current_dir);
                     }
                 }
             }
@@ -535,6 +641,7 @@ impl Solver<'_, usize> for Solution {
 fn main() {
     let sample = include_str!("../../samples/22.txt");
     let sample_2 = include_str!("../../samples/22_1.txt");
+    let sample_3 = include_str!("../../samples/22_2.txt");
     let input = include_str!("../../inputs/22.txt");
     let part_one_problems = [
         aoc::Input::new_sample(sample, 6032),
@@ -545,7 +652,8 @@ fn main() {
     let part_two_problems = [
         aoc::Input::new_sample(sample, 5031),
         aoc::Input::new_sample(sample_2, 12056),
-        aoc::Input::new_final(input),
+        aoc::Input::new_sample(sample_3, 1038),
+        aoc::Input::new_final(input), // 93373 too low // 103134
     ];
 
     Solution {}.run(&part_one_problems, &part_two_problems);
