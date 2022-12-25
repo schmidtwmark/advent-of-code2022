@@ -1,4 +1,4 @@
-use std::{fmt::write, str::FromStr};
+use std::str::FromStr;
 
 use aoc::Solver;
 use itertools::Itertools;

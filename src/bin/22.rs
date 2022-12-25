@@ -1,4 +1,4 @@
-use std::{default, fmt::Display};
+use std::fmt::Display;
 
 use aoc::Solver;
 use itertools::Itertools;
@@ -27,16 +27,6 @@ impl Display for Direction {
 }
 
 impl Direction {
-    fn from(dir: (isize, isize)) -> Self {
-        match dir {
-            (0, -1) => Direction::Up,
-            (0, 1) => Direction::Down,
-            (-1, 0) => Direction::Left,
-            (1, 0) => Direction::Right,
-            _ => panic!("Unexpected direction: {:?}", dir),
-        }
-    }
-
     fn score(&self) -> usize {
         match self {
             Direction::Up => 3,

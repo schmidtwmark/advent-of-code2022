@@ -28,7 +28,7 @@ impl FromStr for Part {
             "1" => Ok(Part::One),
             "2" => Ok(Part::Two),
             "all" => Ok(Part::All),
-            _ => Err(format!("Unknown part {}", s)),
+            _ => Err(format!("Unknown part {s}")),
         }
     }
 }
@@ -63,7 +63,7 @@ impl FromStr for Target {
                 if let Ok(num) = s.parse() {
                     Ok(Target::Sample(num))
                 } else {
-                    Err::<Self, Self::Err>(format!("Unknown target {}", s))
+                    Err::<Self, Self::Err>(format!("Unknown target {s}"))
                 }
             }
         }
@@ -73,7 +73,7 @@ impl FromStr for Target {
 impl Display for Target {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Target::Sample(idx) => write!(f, "sample {}", idx),
+            Target::Sample(idx) => write!(f, "sample {idx}"),
             Target::Samples => write!(f, "samples"),
             Target::Final => write!(f, "final"),
             Target::All => write!(f, "all"),

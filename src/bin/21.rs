@@ -86,10 +86,10 @@ enum Expression {
 impl Display for Expression {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            Expression::Constant(c) => write!(f, "{}", c),
-            Expression::Variable(v, factor) => write!(f, "{}{}", factor, v),
+            Expression::Constant(c) => write!(f, "{c}"),
+            Expression::Variable(v, factor) => write!(f, "{factor}{v}"),
             Expression::Operation(op, lhs, rhs) => {
-                write!(f, "({} {} {})", lhs, op, rhs)
+                write!(f, "({lhs} {op} {rhs})")
             }
         }
     }

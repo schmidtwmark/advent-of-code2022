@@ -1,7 +1,6 @@
 use aoc::Solver;
 use hashbrown::{HashMap, HashSet};
-use itertools::Itertools;
-use log::{debug, info};
+use log::debug;
 
 type Position = (isize, isize);
 

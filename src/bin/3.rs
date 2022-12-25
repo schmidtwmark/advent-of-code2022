@@ -24,8 +24,7 @@ fn find_common(line: &str) -> char {
     let intersect = left_set.intersection(right_set);
     if intersect.iter().count() != 1 {
         println!(
-            "Intersection between {} and {} is {:?}",
-            left_compartment, right_compartment, intersect
+            "Intersection between {left_compartment} and {right_compartment} is {intersect:?}"
         );
         panic!("Intersection is not 1");
     }
@@ -60,7 +59,7 @@ impl Solver<'_, usize> for Solution {
                     .reduce(|a, b| a.intersection(b))
                     .expect("Should be one item");
                 if common_item.len() != 1 {
-                    println!("Not exactly 1 common item: {:?}", common_item);
+                    println!("Not exactly 1 common item: {common_item:?}");
                     panic!();
                 }
                 compute_priority(*common_item.iter().next().unwrap())

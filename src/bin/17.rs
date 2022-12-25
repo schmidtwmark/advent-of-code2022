@@ -1,5 +1,3 @@
-#![feature(mixed_integer_ops)]
-
 use aoc::Solver;
 use itertools::Itertools;
 use log::{debug, info};
