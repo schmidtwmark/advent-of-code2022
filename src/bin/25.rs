@@ -159,36 +159,4 @@ mod tests {
             }
         );
     }
-
-    #[test]
-    fn test_from_decimal() {
-        assert_eq!(
-            SnafuNumber::from_decimal(3),
-            SnafuNumber {
-                digits: vec![1, -2],
-            },
-        );
-
-        assert_eq!(
-            SnafuNumber::from_decimal(0),
-            SnafuNumber { digits: vec![0] },
-        );
-
-        assert_eq!(
-            SnafuNumber::from_decimal(1),
-            SnafuNumber { digits: vec![1] },
-        );
-
-        assert_eq!(
-            SnafuNumber::from_decimal(2),
-            SnafuNumber { digits: vec![2] },
-        );
-
-        assert_eq!(
-            SnafuNumber::from_decimal(1747),
-            SnafuNumber {
-                digits: vec![2, -1, 0, -1, -2, 1],
-            },
-        );
-    }
 }
